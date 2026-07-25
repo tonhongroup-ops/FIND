@@ -6,11 +6,10 @@ import yfinance as yf
 st.set_page_config(page_title="S&P 500 Smart Money & Innovation Swing Radar", layout="wide")
 
 st.title("🚀 S&P 500 Smart Money Accumulation & Innovation Swing Radar")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร | จับพฤติกรรมเจ้ามือสะสมของ พร้อมคำนวณจุดเข้า-จุดขายเป้า 5-10%")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร | แก้ไขบั๊กแสดงผลราคาและจุดขายให้คมชัด")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
-    # ขยายพูลรายชื่อหุ้นให้ครอบคลุมกลุ่มนวัตกรรม เทคโนโลยี และเฮลท์แคร์มากขึ้น
     sp500_full = {
         'MSFT': ('Microsoft Corporation', 'Information Technology'),
         'AAPL': ('Apple Inc.', 'Information Technology'),
@@ -59,8 +58,8 @@ def detect_smart_money_accumulation(df):
     last_vol = recent['Volume'].iloc[-1]
     last_vol_ma = recent['Vol_MA'].iloc[-1]
     
-    is_tight_range = price_range_pct <= 0.12  # กรอบราคาบีบตัวไม่เกิน 12% สะสมพลัง
-    is_volume_dry = last_vol <= (last_vol_ma * 1.2)
+    is_tight_range = price_range_pct <= 0.15  # ขยายกรอบรับความผันผวนเล็กน้อย
+    is_volume_dry = last_vol <= (last_vol_ma * 1.3)
     
     return is_tight_range, is_volume_dry, round(price_range_pct * 100, 1), low_min, high_max
 
@@ -74,12 +73,18 @@ def calculate_rsi(series, period=14):
 def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
     upside = round(float(np.random.uniform(5.5, 9.5)), 1)
     target_price = round(float(close) * (1 + upside / 100.0), 2)
+    tp1_price = round(float(close) * 1.05, 2) # เป้าแรก 5% ชิมลาง
     
     entry_zone = f"${round(low_min, 2)} - ${round(low_min * 1.02, 2)}"
-    take_profit_1 = f"${round(high_max, 2)} (เป้าแรกชิมลาง 5-6%)"
+    take_profit_1 = f"${tp1_price} (เป้าแรกชิมลาง 5%)"
     take_profit_2 = f"${target_price} (เป้าเต็มแม็กซ์ +{upside}%)"
     
-    if ticker == 'MSFT':
+    if ticker == 'LLY':
+        fund = "งบการเงินแกร่งเติบโตสูงจากยอดขายยาต้านโรคอ้วน (Mounjaro/Zepbound) กระแสเงินสดอิสระพุ่งพรวด"
+        patent = "ครองพอร์ตสิทธิบัตรยาเปปไทด์นวัตกรรม (Incretin analogs) และกรรมวิธีการผลิตโมเลกุลชีววัตถุขั้นสูง"
+        past_cat = "ความคืบหน้าการทดลองทางคลินิกเฟสใหม่และการอนุมัติสิทธิบัตรยาจาก อย. สหรัฐฯ"
+        future_cat = "การขยายกำลังการผลิตโรงงานระดับโลกและการประกาศงบไตรมาสถัดไป"
+    elif ticker == 'MSFT':
         fund = "งบกระแสเงินสดจากการดำเนินงานแกร่งระดับโลก อัตรากำไรขั้นต้นเติบโตต่อเนื่องจากคลาวด์และ AI"
         patent = "ครองสิทธิบัตรเชิงรุกด้าน AI Agents, Quantum-Classical Hybrid Solver และโครงสร้างดาต้าเซ็นเตอร์ยุคใหม่"
         past_cat = "ความสำเร็จในการจดสิทธิบัตรความปลอดภัยระบบคลาวด์และการขยายตลาดบริการ AI องค์กร"
@@ -108,7 +113,7 @@ def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
 
     return entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ่มเก็บของ' พร้อมจุดเข้า-จุดขาย"):
+if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ่มเก็บของ' พร้อมจุดเข้า-จุดขาย (เวอร์ชันแก้บั๊ก)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -117,7 +122,7 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
     total_tickers = len(tickers)
     
     for i, ticker in enumerate(tickers):
-        status_text.text(f"กำลังตรวจสอบพฤติกรรมเจ้ามือตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        status_text.text(f"กำลังตรวจสอบพฤติกรรมตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
@@ -141,7 +146,7 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
             
             is_tight, is_dry, range_pct, low_min, high_max = detect_smart_money_accumulation(df)
             
-            if is_tight and latest_rsi <= 65:
+            if is_tight and latest_rsi <= 68:
                 sector = sectors_map.get(ticker, 'General / Other')
                 company_name = names_map.get(ticker, ticker)
                 entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat, future_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min, high_max)
