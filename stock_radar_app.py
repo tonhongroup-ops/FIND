@@ -244,7 +244,7 @@ if st.button(f"🚀 เริ่มสแกน Sector: {selected_sector.split('
     status_text.empty()
     progress_bar.empty()
 
-    st.markdown(## 📂 ผลการสแกนใน Sector: **{selected_sector}**)
+    st.markdown(f"## 📂 ผลการสแกนใน Sector: **{selected_sector}**")
     if matched_data:
         st.success(f"🎯 คัดกรองหุ้นที่ผ่านเกณฑ์เข้มงวดสำเร็จ พบทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
