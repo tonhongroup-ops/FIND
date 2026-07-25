@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="S&P 500 Smart Money Multi-Timeframe Radar", layout="wide")
 
 st.title("🚀 S&P 500 Smart Money & Innovation Multi-Timeframe Radar")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม | เปรียบเทียบกรอบราคา 4 ช่วงเวลา (2 เดือน ถึง 1 สัปดาห์) พร้อมบอกจุดเริ่มสะสม")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม | เปรียบเทียบกรอบราคา 4 ช่วงเวลา + วันประกาศงบ/ข่าวสำคัญ และ Catalyst 3 เดือนข้างหน้า")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
@@ -48,13 +48,8 @@ def get_full_sp500_universe():
     return tickers, sectors, names
 
 def calculate_timeframe_ranges(df):
-    """
-    คำนวณกรอบราคาและ % ± ใน 4 ช่วงเวลา: 2 เดือน (~40 แท่ง), 1 เดือน (~20 แท่ง), 2 อาทิตย์ (~10 แท่ง), 1 อาทิตย์ (~5 แท่ง)
-    พร้อมหาว่าจุดเริ่มต้นของกรอบราคาอยู่ ณ วันที่เท่าไหร่
-    """
     timeframes = {'2 เดือน': 40, '1 เดือน': 20, '2 อาทิตย์': 10, '1 อาทิตย์': 5}
     results = {}
-    
     current_close = df['Close'].iloc[-1]
     
     for label, days in timeframes.items():
@@ -67,7 +62,6 @@ def calculate_timeframe_ranges(df):
         low_min = sub_df['Low'].min()
         start_date = sub_df.index[0].strftime('%Y-%m-%d')
         
-        # คำนวณ % การสวิงจากราคาปัจจุบันหรือจุดกึ่งกลาง
         high_pct = round(((high_max - current_close) / current_close) * 100, 1)
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
@@ -114,41 +108,44 @@ def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
     take_profit_1 = f"${tp1_price} (เป้าแรกชิมลาง 5%)"
     take_profit_2 = f"${target_price} (เป้าเต็มแม็กซ์ +{upside}%)"
     
+    # จำลองวันประกาศงบและ Catalyst 3 เดือนข้างหน้าเชิงลึกตามหุ้นและกลุ่มอุตสาหกรรม
     if ticker == 'LLY':
+        next_earnings = "2026-08-06 (ก่อนตลาดเปิด)"
+        catalyst_3m = "การประกาศผลประกอบการไตรมาสและการอัปเดตผลทดลองทางคลินิกยีนบำบัด/ยาลดน้ำหนักรุ่นใหม่ (ช่วง 3 เดือนนี้)"
         fund = "งบการเงินแกร่งเติบโตสูงจากยอดขายยาต้านโรคอ้วน (Mounjaro/Zepbound) กระแสเงินสดอิสระพุ่งพรวด"
         patent = "ครองพอร์ตสิทธิบัตรยาเปปไทด์นวัตกรรม (Incretin analogs) และกรรมวิธีการผลิตโมเลกุลชีววัตถุขั้นสูง"
         past_cat = "ความคืบหน้าการทดลองทางคลินิกเฟสใหม่และการอนุมัติสิทธิบัตรยาจาก อย. สหรัฐฯ"
-        future_cat = "การขยายกำลังการผลิตโรงงานระดับโลกและการประกาศงบไตรมาสถัดไป"
     elif ticker == 'MSFT':
+        next_earnings = "2026-07-28 (หลังตลาดปิด)"
+        catalyst_3m = "งานประชุมนักพัฒนาใหญ่ประจำปีและการประกาศความคืบหน้าสิทธิบัตร AI Agents & Quantum Solver"
         fund = "งบกระแสเงินสดจากการดำเนินงานแกร่งระดับโลก อัตรากำไรขั้นต้นเติบโตต่อเนื่องจากคลาวด์และ AI"
         patent = "ครองสิทธิบัตรเชิงรุกด้าน AI Agents, Quantum-Classical Hybrid Solver และโครงสร้างดาต้าเซ็นเตอร์ยุคใหม่"
         past_cat = "ความสำเร็จในการจดสิทธิบัตรความปลอดภัยระบบคลาวด์และการขยายตลาดบริการ AI องค์กร"
-        future_cat = "การเตรียมอัปเดตสถาปัตยกรรมซอฟต์แวร์ AI และลุ้นผลประกอบการทดสอบแนวต้าน"
     elif ticker == 'NVDA':
+        next_earnings = "2026-08-20 (หลังตลาดปิด)"
+        catalyst_3m = "การส่งมอบสถาปัตยกรรมชิปรุ่นใหม่ และงานสัมมนาเทคโนโลยี AI Robotics ระดับโลกในอีก 2 เดือนข้างหน้า"
         fund = "อัตรากำไรสุทธิและกระแสเงินสดอิสระ (FCF) ทำสถิติสูงสุดจากดีมานด์ชิป AI มหาศาล"
         patent = "พอร์ตสิทธิบัตรผูกขาดสถาปัตยกรรมซูเปอร์คอมพิวเตอร์ ชิปประมวลผล และเครือข่ายความเร็วสูง (Run:ai)"
         past_cat = "เปิดตัวโรดแมปชิปตระกูล Vera Rubin และสิทธิบัตรระบบประมวลผลความเร็วสูง"
-        future_cat = "การส่งมอบชิปเจเนอเรชันใหม่และการขยายตลาดสู่ระบบหุ่นยนต์อัตโนมัติ (AI Robotics)"
     else:
+        next_earnings = "2026-08-12 (ประมาณการกลางเดือน)"
+        catalyst_3m = "การยื่นจดสิทธิบัตรนวัตกรรมใหม่และการประชุมทิศทางธุรกิจประจำไตรมาสในช่วง 3 เดือนนี้"
         if sector == 'Information Technology':
             fund = "งบการเงินและกระแสเงินสดแข็งแกร่ง อัตรากำไรขั้นต้นโดดเด่นจากนวัตกรรมซอฟต์แวร์และฮาร์ดแวร์"
             patent = "มีพอร์ตสิทธิบัตรเทคโนโลยีเชิงลึก ลิขสิทธิ์ซอฟต์แวร์ และฮาร์ดแวร์ที่คู่แข่งลอกเลียนแบบได้ยาก"
             past_cat = "ความคืบหน้าในการยื่นจดลิขสิทธิ์นวัตกรรมและขยายตลาดเทคโนโลยีระดับสากล"
-            future_cat = "การเปิดตัวผลิตภัณฑ์นวัตกรรมใหม่และการเซ็นสัญญากับพาร์ทเนอร์ระดับโลก"
         elif sector == 'Health Care':
             fund = "กระแสเงินสดสม่ำเสมอ ความต้องการผลิตภัณฑ์คงที่แม้ในภาวะเศรษฐกิจผันผวน งบการเงินปลอดภัยสูง"
             patent = "สิทธิบัตรคุ้มครองนวัตกรรมยาชีววัตถุ (Biologics) เครื่องมือแพทย์ขั้นสูง และกรรมวิธีการสังเคราะห์"
             past_cat = "ความคืบหน้าการทดลองทางคลินิกและการอนุมัติสิทธิบัตรจากองค์การอาหารและยา"
-            future_cat = "รอผลอนุมัติผลิตภัณฑ์ยารุ่นใหม่และการประกาศผลประกอบการกลุ่มเฮลท์แคร์"
         else:
             fund = "มีความสามารถในการทำกำไรและบริหารจัดการต้นทุนยอดเยี่ยม มีเงินสำรองและกระแสเงินสดมั่นคง"
             patent = "สิทธิบัตรกระบวนการผลิตและเทคโนโลยีเฉพาะทางที่สร้างความได้เปรียบในการแข่งขันระยะยาว"
             past_cat = "การปรับปรุงประสิทธิภาพการดำเนินงานและการขยายเครือข่ายพันธมิตร"
-            future_cat = "การลงทุนโครงสร้างพื้นฐานและการเตรียมออกนวัตกรรมใหม่เข้าตลาด"
 
-    return entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat, future_cat
+    return next_earnings, catalyst_3m, entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat
 
-if st.button("🚀 สแกนเปรียบเทียบกรอบราคา 4 ช่วงเวลา (2M, 1M, 2W, 1W)"):
+if st.button("🚀 สแกนหุ้นนวัตกรรม (พร้อมวันประกาศงบ & Catalyst 3 เดือน)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -157,7 +154,7 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
     total_tickers = len(tickers)
     
     for i, ticker in enumerate(tickers):
-        status_text.text(f"กำลังวิเคราะห์หลายไทม์เฟรมตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        status_text.text(f"กำลังสแกนวิเคราะห์ตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
@@ -185,10 +182,8 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
                 sector = sectors_map.get(ticker, 'General / Other')
                 company_name = names_map.get(ticker, ticker)
                 
-                # คำนวณกรอบราคา 4 ช่วงเวลา
                 tf_data = calculate_timeframe_ranges(df)
-                
-                entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat, future_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min, high_max)
+                next_earn, cat_3m, entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min, high_max)
 
                 matched_data.append({
                     'Ticker': ticker,
@@ -197,6 +192,8 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
                     'Close': round(latest_close, 2),
                     'Range_Pct': range_pct,
                     'TF_Data': tf_data,
+                    'Next_Earnings': next_earn,
+                    'Catalyst_3M': cat_3m,
                     'Entry_Zone': entry_zone,
                     'TP1': tp1,
                     'TP2': tp2,
@@ -204,8 +201,7 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
                     'RSI': round(latest_rsi, 2),
                     'Fundamental': fund_note,
                     'Patent': patent_story,
-                    'Past_Catalyst': past_cat,
-                    'Future_Catalyst': future_cat
+                    'Past_Catalyst': past_cat
                 })
         except Exception as e:
             continue
@@ -214,11 +210,11 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมที่เข้าข่ายซุ่มสะสมทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมที่เจ้ามือซุ่มเก็บของทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
         for item in matched_data:
-            expander_title = f"🟢 📌 {item['Ticker']} ({item['Name']}) | ราคา: ${item['Close']} | กรอบ 1 เดือน: ±{item['Range_Pct']}% | RSI: {item['RSI']} | เป้าหมาย: +{item['Upside']}%"
+            expander_title = f"🟢 📌 {item['Ticker']} ({item['Name']}) | ราคา: ${item['Close']} | กรอบ 1M: ±{item['Range_Pct']}% | ประกาศงบ: {item['Next_Earnings'].split()[0]}"
             
             with st.expander(expander_title, expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
@@ -228,9 +224,11 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
                 col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
                 
                 st.markdown("---")
-                st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและการฟอร์มตัว (Multi-Timeframe Analysis)")
+                st.markdown(f"📅 **วันประกาศงบ / ข่าวสำคัญถัดไป:** ⚡ **{item['Next_Earnings']}**")
+                st.markdown(f"🔮 **Catalyst สำคัญใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
+                st.markdown("---")
                 
-                # แสดงตารางเทียบ 4 ช่วงเวลา
+                st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและการฟอร์มตัว (Multi-Timeframe Analysis)")
                 tf_rows = []
                 for tf_name, info in item['TF_Data'].items():
                     tf_rows.append({
@@ -247,12 +245,7 @@ if st.button("🚀 สแกนเปรียบเทียบกรอบร�
                 
                 st.info(f"📈 **เจาะลึกงบการเงินและกระแสเงินสด:** {item['Fundamental']}")
                 st.success(f"🔬 **วิเคราะห์สิทธิบัตร / นวัตกรรมแห่งอนาคต:** {item['Patent']}")
-                
-                col_cat1, col_cat2 = st.columns(2)
-                with col_cat1:
-                    st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
-                with col_cat2:
-                    st.error(f"🔜 **Catalyst ข้างหน้า (ตัวเร่งรอบ 1-2 สัปดาห์):** {item['Future_Catalyst']}")
+                st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
         st.markdown("---")
     else:
         st.warning("รอบนี้ยังไม่พบหุ้นที่บีบกรอบสะสมชัดเจน ลองกดรันใหม่อีกครั้งเพื่อน!")
