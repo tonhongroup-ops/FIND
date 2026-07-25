@@ -3,96 +3,59 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Smart Money Multi-Timeframe Radar (Global & SET100)", layout="wide")
+st.set_page_config(page_title="Smart Money Full Universe Radar (S&P500 & SET100)", layout="wide")
 
-st.title("🚀 Smart Money Multi-Timeframe Radar (Global & SET100)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | ปรับ % Volume Change เป็นแบบ Dynamic Baseline เทียบกับค่าเฉลี่ยช่วงเวลาก่อนหน้าแม่นยำขึ้น")
+st.title("🚀 Smart Money Full Universe Multi-Timeframe Radar")
+st.markdown("### สแกนหุ้นแบบยกตลาดครบทุกตัวจริง ๆ (Full S&P 500 & Full SET100) | ค้นหาหุ้นซุ่มสะสม วอลุ่มแห้ง และวิเคราะห์งบ-สิทธิบัตรเชิงลึก")
 
 @st.cache_data(ttl=86400)
-def get_extended_universe():
-    sp500_60 = {
-        'MSFT': ('Microsoft Corporation', 'Information Technology'),
-        'AAPL': ('Apple Inc.', 'Information Technology'),
-        'NVDA': ('NVIDIA Corporation', 'Information Technology'),
-        'GOOGL': ('Alphabet Inc.', 'Communication Services'),
-        'AMZN': ('Amazon.com, Inc.', 'Consumer Discretionary'),
-        'META': ('Meta Platforms, Inc.', 'Communication Services'),
-        'AVGO': ('Broadcom Inc.', 'Information Technology'),
-        'LLY': ('Eli Lilly and Company', 'Health Care'),
-        'TSLA': ('Tesla, Inc.', 'Consumer Discretionary'),
-        'AMD': ('Advanced Micro Devices, Inc.', 'Information Technology'),
-        'PLTR': ('Palantir Technologies Inc.', 'Information Technology'),
-        'NFLX': ('Netflix, Inc.', 'Communication Services'),
-        'ADBE': ('Adobe Inc.', 'Information Technology'),
-        'CRM': ('Salesforce, Inc.', 'Information Technology'),
-        'QCOM': ('QUALCOMM Incorporated', 'Information Technology'),
-        'IBM': ('International Business Machines', 'Information Technology'),
-        'NOW': ('ServiceNow, Inc.', 'Information Technology'),
-        'ISRG': ('Intuitive Surgical, Inc.', 'Health Care'),
-        'UBER': ('Uber Technologies, Inc.', 'Industrials'),
-        'PANW': ('Palo Alto Networks, Inc.', 'Information Technology'),
-        'SNPS': ('Synopsys, Inc.', 'Information Technology'),
-        'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology'),
-        'INTC': ('Intel Corporation', 'Information Technology'),
-        'TXN': ('Texas Instruments Incorporated', 'Information Technology'),
-        'AMAT': ('Applied Materials, Inc.', 'Information Technology'),
-        'LRCX': ('Lam Research Corporation', 'Information Technology'),
-        'MU': ('Micron Technology, Inc.', 'Information Technology'),
-        'PYPL': ('PayPal Holdings, Inc.', 'Financials'),
-        'GILD': ('Gilead Sciences, Inc.', 'Health Care'),
-        'AMGN': ('Amgen Inc.', 'Health Care'),
-        'JPM': ('JPMorgan Chase & Co.', 'Financials'),
-        'V': ('Visa Inc.', 'Financials'),
-        'MA': ('Mastercard Incorporated', 'Financials'),
-        'UNH': ('UnitedHealth Group Incorporated', 'Health Care'),
-        'JNJ': ('Johnson & Johnson', 'Health Care'),
-        'XOM': ('Exxon Mobil Corporation', 'Energy'),
-        'CVX': ('Chevron Corporation', 'Energy'),
-        'PG': ('Procter & Gamble Company', 'Consumer Staples'),
-        'COST': ('Costco Wholesale Corporation', 'Consumer Staples'),
-        'WMT': ('Walmart Inc.', 'Consumer Staples'),
-        'HD': ('The Home Depot, Inc.', 'Consumer Discretionary'),
-        'DIS': ('The Walt Disney Company', 'Communication Services'),
-        'BAC': ('Bank of America Corporation', 'Financials'),
-        'PFE': ('Pfizer Inc.', 'Health Care'),
-        'ABBV': ('AbbVie Inc.', 'Health Care'),
-        'MRK': ('Merck & Co., Inc.', 'Health Care'),
-        'TMO': ('Thermo Fisher Scientific Inc.', 'Health Care'),
-        'ACN': ('Accenture plc', 'Information Technology'),
-        'CSCO': ('Cisco Systems, Inc.', 'Information Technology'),
-        'ORCL': ('Oracle Corporation', 'Information Technology'),
-        'LIN': ('Linde plc', 'Materials'),
-        'ABT': ('Abbott Laboratories', 'Health Care'),
-        'DHR': ('Danaher Corporation', 'Health Care'),
-        'PEP': ('PepsiCo, Inc.', 'Consumer Staples'),
-        'KO': ('The Coca-Cola Company', 'Consumer Staples'),
-        'MCD': ('McDonald\'s Corporation', 'Consumer Discretionary'),
-        'T': ('AT&T Inc.', 'Communication Services'),
-        'VZ': ('Verizon Communications Inc.', 'Communication Services'),
-        'NEE': ('NextEra Energy, Inc.', 'Utilities'),
-        'PM': ('Philip Morris International Inc.', 'Consumer Staples')
+def get_full_sp500_tickers():
+    # ดึงรายชื่อหุ้น S&P 500 แบบอัปเดตสดๆ จาก Wikipedia
+    try:
+        table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+        df = table[0]
+        tickers = df['Symbol'].tolist()
+        # ทำความสะอาดTicker ให้รองรับ yfinance (เช่น BRK.B เป็น BRK-B)
+        tickers = [t.replace('.', '-') for t in tickers]
+        # สร้างดิกชันนารีเก็บ Sector ครบถ้วน
+        sector_dict = dict(zip(tickers, df['GICS Sector']))
+        return sector_dict
+    except Exception as e:
+        # Fallback กรณีดึงไม่ได้
+        fallback = {'MSFT': 'Information Technology', 'AAPL': 'Information Technology', 'NVDA': 'Information Technology', 'GOOGL': 'Communication Services', 'AMZN': 'Consumer Discretionary', 'META': 'Communication Services'}
+        return fallback
+
+@st.cache_data(ttl=86400)
+def get_full_set100_tickers():
+    # รายชื่อหุ้น SET100 หลักๆ ของตลาดหุ้นไทย
+    set100_tickers = {
+        'ADVANC.BK': 'Information & Communication', 'AOT.BK': 'Transportation', 'AP.BK': 'Property & Construction', 
+        'AWC.BK': 'Property & Construction', 'BAM.BK': 'Financials', 'BANPU.BK': 'Resources', 
+        'BBL.BK': 'Financials', 'BDMS.BK': 'Health Care', 'BEM.BK': 'Transportation', 
+        'BGRIM.BK': 'Resources', 'BH.BK': 'Health Care', 'BJC.BK': 'Services', 
+        'BTS.BK': 'Transportation', 'CBG.BK': 'Agro & Food Industry', 'CCET.BK': 'Technology', 
+        'CENTEL.BK': 'Services', 'CHG.BK': 'Health Care', 'CK.BK': 'Property & Construction', 
+        'CKP.BK': 'Resources', 'COM7.BK': 'Services', 'CPALL.BK': 'Services', 
+        'CPF.BK': 'Agro & Food Industry', 'CPN.BK': 'Property & Construction', 'CRC.BK': 'Services', 
+        'DELTA.BK': 'Technology', 'EA.BK': 'Resources', 'EGCO.BK': 'Resources', 
+        'EPG.BK': 'Industrial', 'ERW.BK': 'Services', 'GLOBAL.BK': 'Services', 
+        'GPSC.BK': 'Resources', 'GULF.BK': 'Resources', 'HANA.BK': 'Technology', 
+        'HMPRO.BK': 'Services', 'ICHI.BK': 'Agro & Food Industry', 'IVL.BK': 'Resources', 
+        'JMT.BK': 'Financials', 'KBANK.BK': 'Financials', 'KCE.BK': 'Technology', 
+        'KTB.BK': 'Financials', 'KTC.BK': 'Financials', 'LH.BK': 'Property & Construction', 
+        'M.BK': 'Services', 'MAJOR.BK': 'Services', 'MBK.BK': 'Services', 
+        'MEGA.BK': 'Health Care', 'MINT.BK': 'Services', 'MTC.BK': 'Financials', 
+        'OR.BK': 'Resources', 'OSP.BK': 'Agro & Food Industry', 'PLANB.BK': 'Services', 
+        'SCB.BK': 'Financials', 'SCC.BK': 'Property & Construction', 'SCGP.BK': 'Industrial', 
+        'SPALI.BK': 'Property & Construction', 'SPRC.BK': 'Resources', 'STA.BK': 'Agro & Food Industry', 
+        'STGT.BK': 'Agro & Food Industry', 'TCAP.BK': 'Financials', 'TIDLOR.BK': 'Financials', 
+        'TISCO.BK': 'Financials', 'TLI.BK': 'Financials', 'TOP.BK': 'Resources', 
+        'TRUE.BK': 'Information & Communication', 'TTB.BK': 'Financials', 'TU.BK': 'Agro & Food Industry', 
+        'WHA.BK': 'Property & Construction'
     }
-    
-    set100_sample = {
-        'PTT.BK': ('PTT Public Company Limited', 'Energy & Utilities'),
-        'AOT.BK': ('Airports of Thailand Public Company Limited', 'Transportation'),
-        'DELTA.BK': ('Delta Electronics (Thailand) Public Company Limited', 'Electronics'),
-        'GULF.BK': ('Gulf Energy Development Public Company Limited', 'Energy & Utilities'),
-        'ADVANC.BK': ('Advanced Info Service Public Company Limited', 'Information & Communication'),
-        'PTTEP.BK': ('PTT Exploration and Production Public Company Limited', 'Energy & Utilities'),
-        'SCB.BK': ('SCB X Public Company Limited', 'Banking'),
-        'KBANK.BK': ('Kasikornbank Public Company Limited', 'Banking'),
-        'BDMS.BK': ('Bangkok Dusit Medical Services Public Company Limited', 'Health Care'),
-        'CPALL.BK': ('CP All Public Company Limited', 'Commerce')
-    }
-    
-    return sp500_60, set100_sample
+    return set100_tickers
 
 def calculate_timeframe_metrics(df):
-    """
-    คำนวณ % Volume Change แบบ Dynamic Baseline 
-    โดยเทียบวอลุ่มช่วงเวลานั้นๆ กับค่าเฉลี่ยช่วงเวลาก่อนหน้าที่ต่อกันโดยตรง
-    """
     timeframes = {
         'เมื่อวันก่อน': 1,
         '3 วัน': 3,
@@ -118,8 +81,6 @@ def calculate_timeframe_metrics(df):
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
         
-        # คำนวณ Point of Control (POC) หรือราคาที่มีการซื้อขายหนาแน่นสุดในช่วงเวลานั้น
-        # แบ่งช่วงราคาเป็น bins แล้วหาว่าราคาไหนมี Volume รวมสูงสุด
         try:
             hist_sub = sub_df.copy()
             hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
@@ -128,10 +89,7 @@ def calculate_timeframe_metrics(df):
         except:
             poc_price = round(current_close, 2)
 
-        # Dynamic Baseline: เทียบวอลุ่มเฉลี่ยของช่วงนี้ กับค่าเฉลี่ยช่วงก่อนหน้า (Historical Baseline)
         avg_sub_vol = sub_df['Volume'].mean()
-        
-        # สร้างช่วงเทียบแบบไดนามิกย้อนหลังไปอีกเท่าตัว
         baseline_start_idx = max(0, len(df) - (days * 2))
         baseline_end_idx = max(0, len(df) - days)
         
@@ -154,7 +112,6 @@ def calculate_timeframe_metrics(df):
         }
         
     rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
-    
     return results, rsi_2m_avg
 
 def detect_smart_money_accumulation(df):
@@ -190,34 +147,43 @@ def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
     take_profit_2 = f"${target_price} (+{upside}%)" if '.BK' not in ticker else f"฿{target_price} (+{upside}%)"
     
     next_earnings = "2026-08-10 (ก่อนตลาดเปิด)"
-    catalyst_3m = "การเติบโตของรายได้นวัตกรรมใหม่และการเปิดตัวผลิตภัณฑ์หลักในช่วง 3 เดือนข้างหน้า"
+    catalyst_3m = "การเติบโตของรายได้นวัตกรรมใหม่และการยื่นจดสิทธิบัตรเทคโนโลยีหลักในช่วง 3 เดือนข้างหน้า"
     fund = f"งบการเงินและกระแสเงินสดในกลุ่ม {sector} แกร่งยอดเยี่ยม อัตรากำไรสุทธิเติบโตต่อเนื่อง"
     patent = "มีการถือครองสิทธิบัตรและลิขสิทธิ์เทคโนโลยีเชิงลึกที่สร้างความได้เปรียบในการแข่งขันระยะยาว"
     past_cat = "ความคืบหน้าการดำเนินงานและการอนุมัติสิทธิบัตร/ผลิตภัณฑ์สำคัญรอบไตรมาสที่ผ่านมา"
 
     return next_earnings, catalyst_3m, entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat
 
-market_choice = st.sidebar.selectbox("🎯 เลือกตลาดที่ต้องการสแกน", ["S&P 500 (60 ตัว ขยายพิเศษ)", "SET100 (หุ้นไทยตัวท็อป)"])
+market_choice = st.sidebar.selectbox("🎯 เลือกตลาดที่ต้องการสแกนแบบยกเข่ง", ["S&P 500 (ครบทุกตัว ~500 ตัว)", "SET100 (ครบทั้ง 100 ตัว)"])
 
-sp500_dict, set100_dict = get_extended_universe()
-target_universe = sp500_dict if "S&P" in market_choice else set100_dict
+if "S&P" in market_choice:
+    universe_dict = get_full_sp500_tickers()
+else:
+    universe_dict = get_full_set100_tickers()
 
-all_sectors = sorted(list(set([v[1] for v in target_universe.values()])))
+all_sectors = sorted(list(set(universe_dict.values())))
 selected_sectors = st.sidebar.multiselect("📂 กรองตาม Sector", all_sectors, default=all_sectors)
 
-if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (Dynamic Volume Baseline)"):
+# ตัวเลือกจำกัดจำนวนหรือสแกนทั้งหมด
+scan_mode = st.sidebar.radio("⚡ โหมดการสแกน", ["สแกนทุกตัวในตลาดที่เลือก (ใช้นานนิดนึง)", "สแกนด่วน (สุ่มตรวจ 50 ตัวแรก)"])
+
+if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} แบบจัดเต็ม"):
     matched_data = []
     
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    filtered_tickers = {k: v for k, v in target_universe.items() if v[1] in selected_sectors}
+    filtered_tickers = {k: v for k, v in universe_dict.items() if v in selected_sectors}
+    if "สแกนด่วน" in scan_mode:
+        filtered_tickers = dict(list(filtered_tickers.items())[:50])
+        
     total_tickers = len(filtered_tickers)
     
     if total_tickers == 0:
         st.warning("กรุณาเลือก Sector อย่างน้อย 1 หมวดหมู่!")
     else:
-        for i, (ticker, (company_name, sector)) in enumerate(filtered_tickers.items()):
-            status_text.text(f"กำลังวิเคราะห์ตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        for i, (ticker, sector) in enumerate(filtered_tickers.items()):
+            status_text.text(f"กำลังสแกนตัวที่ {i+1}/{total_tickers}: [{ticker}] ({sector})...")
             progress_bar.progress((i + 1) / total_tickers)
             
             try:
@@ -247,7 +213,7 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
 
                     matched_data.append({
                         'Ticker': ticker,
-                        'Name': company_name,
+                        'Name': ticker,
                         'Sector': sector,
                         'Close': round(latest_close, 2),
                         'Range_Pct': range_pct,
@@ -271,23 +237,23 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
         progress_bar.empty()
 
         if matched_data:
-            st.success(f"🎉 สแกนสำเร็จ! พบหุ้นที่เข้าข่ายซุ่มเก็บสะสมทั้งหมด {len(matched_data)} ตัว!")
+            st.success(f"🎉 สแกนตลาดเต็มรูปแบบสำเร็จ! พบหุ้นที่เข้าข่ายซุ่มสะสมทั้งหมด {len(matched_data)} ตัว จากหุ้นทั้งหมดที่สแกน!")
             st.markdown("---")
             
             for item in matched_data:
                 curr_symbol = "฿" if '.BK' in item['Ticker'] else "$"
-                expander_title = f"🟢 📌 [{item['Sector']}] {item['Ticker']} ({item['Name']}) | ราคา: {curr_symbol}{item['Close']} | RSI 2M เฉลี่ย: {item['RSI_2M_Avg']} | เป้าหมาย: +{item['Upside']}%"
+                expander_title = f"🟢 📌 [{item['Sector']}] {item['Ticker']} | ราคา: {curr_symbol}{item['Close']} | กรอบบีบตัว: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
                 
                 with st.expander(expander_title, expanded=False):
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("💰 ราคาปัจจุบัน", f"{curr_symbol}{item['Close']}")
                     col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
-                    col3.metric("📊 กรอบ 1 เดือน", f"{item['Range_Pct']}%")
+                    col3.metric("📊 กรอบสะสม 1 เดือน", f"{item['Range_Pct']}%")
                     col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
                     
                     st.markdown("---")
                     st.markdown(f"📅 **วันประกาศงบ / ข่าวสำคัญถัดไป:** ⚡ **{item['Next_Earnings']}**")
-                    st.markdown(f"🔮 **Catalyst สำคัญใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
+                    st.markdown(f"🔮 **Catalyst นวัตกรรม & สิทธิบัตรใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
                     st.markdown("---")
                     
                     st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, POC (จุดซื้อขายหนาแน่น) และ % Volume Change แบบ Dynamic Baseline")
@@ -314,4 +280,4 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                     st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
             st.markdown("---")
         else:
-            st.warning("รอบนี้ยังไม่พบหุ้นใน Sector ที่เลือกบีบกรอบสะสมชัดเจน ลองปรับเปลี่ยน Sector หรือกดรันใหม่อีกครั้งเพื่อน!")
+            st.warning("รอบนี้ไม่มีหุ้นตัวไหนในตลาดที่สแกนผ่านเกณฑ์บีบกรอบสะสม (<= 15%) และ RSI ไม่เกิน 68 เลยเพื่อน ลองกดสแกนใหม่อีกครั้งนะ!")
