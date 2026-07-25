@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="S&P 500 Smart Money & Innovation Swing Radar", layout="wide")
+st.set_page_config(page_title="S&P 500 Smart Money Multi-Timeframe Radar", layout="wide")
 
-st.title("🚀 S&P 500 Smart Money Accumulation & Innovation Swing Radar")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร | แก้ไขบั๊กแสดงผลราคาและจุดขายให้คมชัด")
+st.title("🚀 S&P 500 Smart Money & Innovation Multi-Timeframe Radar")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม | เปรียบเทียบกรอบราคา 4 ช่วงเวลา (2 เดือน ถึง 1 สัปดาห์) พร้อมบอกจุดเริ่มสะสม")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
@@ -47,6 +47,41 @@ def get_full_sp500_universe():
     names = {t: sp500_full[t][0] for t in tickers}
     return tickers, sectors, names
 
+def calculate_timeframe_ranges(df):
+    """
+    คำนวณกรอบราคาและ % ± ใน 4 ช่วงเวลา: 2 เดือน (~40 แท่ง), 1 เดือน (~20 แท่ง), 2 อาทิตย์ (~10 แท่ง), 1 อาทิตย์ (~5 แท่ง)
+    พร้อมหาว่าจุดเริ่มต้นของกรอบราคาอยู่ ณ วันที่เท่าไหร่
+    """
+    timeframes = {'2 เดือน': 40, '1 เดือน': 20, '2 อาทิตย์': 10, '1 อาทิตย์': 5}
+    results = {}
+    
+    current_close = df['Close'].iloc[-1]
+    
+    for label, days in timeframes.items():
+        if len(df) >= days:
+            sub_df = df.tail(days).copy()
+        else:
+            sub_df = df.copy()
+            
+        high_max = sub_df['High'].max()
+        low_min = sub_df['Low'].min()
+        start_date = sub_df.index[0].strftime('%Y-%m-%d')
+        
+        # คำนวณ % การสวิงจากราคาปัจจุบันหรือจุดกึ่งกลาง
+        high_pct = round(((high_max - current_close) / current_close) * 100, 1)
+        low_pct = round(((low_min - current_close) / current_close) * 100, 1)
+        total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
+        
+        results[label] = {
+            'start_date': start_date,
+            'high': round(high_max, 2),
+            'low': round(low_min, 2),
+            'high_pct': high_pct,
+            'low_pct': low_pct,
+            'range_pct': total_range_pct
+        }
+    return results
+
 def detect_smart_money_accumulation(df):
     recent = df.tail(20).copy()
     high_max = recent['High'].max()
@@ -58,7 +93,7 @@ def detect_smart_money_accumulation(df):
     last_vol = recent['Volume'].iloc[-1]
     last_vol_ma = recent['Vol_MA'].iloc[-1]
     
-    is_tight_range = price_range_pct <= 0.15  # ขยายกรอบรับความผันผวนเล็กน้อย
+    is_tight_range = price_range_pct <= 0.15
     is_volume_dry = last_vol <= (last_vol_ma * 1.3)
     
     return is_tight_range, is_volume_dry, round(price_range_pct * 100, 1), low_min, high_max
@@ -73,7 +108,7 @@ def calculate_rsi(series, period=14):
 def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
     upside = round(float(np.random.uniform(5.5, 9.5)), 1)
     target_price = round(float(close) * (1 + upside / 100.0), 2)
-    tp1_price = round(float(close) * 1.05, 2) # เป้าแรก 5% ชิมลาง
+    tp1_price = round(float(close) * 1.05, 2)
     
     entry_zone = f"${round(low_min, 2)} - ${round(low_min * 1.02, 2)}"
     take_profit_1 = f"${tp1_price} (เป้าแรกชิมลาง 5%)"
@@ -113,7 +148,7 @@ def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
 
     return entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ่มเก็บของ' พร้อมจุดเข้า-จุดขาย (เวอร์ชันแก้บั๊ก)"):
+if st.button("🚀 สแกนเปรียบเทียบกรอบราคา 4 ช่วงเวลา (2M, 1M, 2W, 1W)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -122,12 +157,12 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
     total_tickers = len(tickers)
     
     for i, ticker in enumerate(tickers):
-        status_text.text(f"กำลังตรวจสอบพฤติกรรมตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        status_text.text(f"กำลังวิเคราะห์หลายไทม์เฟรมตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
             df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty or len(df) < 30:
+            if df.empty or len(df) < 40:
                 continue
                 
             if isinstance(df.columns, pd.MultiIndex):
@@ -149,6 +184,10 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
             if is_tight and latest_rsi <= 68:
                 sector = sectors_map.get(ticker, 'General / Other')
                 company_name = names_map.get(ticker, ticker)
+                
+                # คำนวณกรอบราคา 4 ช่วงเวลา
+                tf_data = calculate_timeframe_ranges(df)
+                
                 entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat, future_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min, high_max)
 
                 matched_data.append({
@@ -157,6 +196,7 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
                     'Sector': sector,
                     'Close': round(latest_close, 2),
                     'Range_Pct': range_pct,
+                    'TF_Data': tf_data,
                     'Entry_Zone': entry_zone,
                     'TP1': tp1,
                     'TP2': tp2,
@@ -174,18 +214,33 @@ if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมที่เจ้ามือซุ่มเก็บของทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมที่เข้าข่ายซุ่มสะสมทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
         for item in matched_data:
-            expander_title = f"🟢 📌 {item['Ticker']} ({item['Name']}) | ราคา: ${item['Close']} | กรอบสะสม: ±{item['Range_Pct']}% | RSI: {item['RSI']} | เป้าหมาย: +{item['Upside']}%"
+            expander_title = f"🟢 📌 {item['Ticker']} ({item['Name']}) | ราคา: ${item['Close']} | กรอบ 1 เดือน: ±{item['Range_Pct']}% | RSI: {item['RSI']} | เป้าหมาย: +{item['Upside']}%"
             
             with st.expander(expander_title, expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("💰 ราคาปัจจุบัน", f"${item['Close']}")
-                col2.metric("📊 กรอบบีบตัว", f"{item['Range_Pct']}%")
+                col2.metric("📊 กรอบ 1 เดือน", f"{item['Range_Pct']}%")
                 col3.metric("📉 RSI ระยะสั้น", f"{item['RSI']}")
                 col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
+                
+                st.markdown("---")
+                st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและการฟอร์มตัว (Multi-Timeframe Analysis)")
+                
+                # แสดงตารางเทียบ 4 ช่วงเวลา
+                tf_rows = []
+                for tf_name, info in item['TF_Data'].items():
+                    tf_rows.append({
+                        'ช่วงเวลา': tf_name,
+                        'เริ่มสะสมตั้งแต่': info['start_date'],
+                        'ราคาสูงสุด (High)': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                        'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                        'ความกว้างกรอบ (Range)': f"{info['range_pct']}%"
+                    })
+                st.table(pd.DataFrame(tf_rows))
                 
                 st.markdown(f"📍 **จุดเข้าซื้อ (Entry Zone):** 🟢 **{item['Entry_Zone']}** (รอจังหวะย่อวอลุ่มแห้ง)")
                 st.markdown(f"🎯 **จุดขายทำกำไร (Take Profit):** 🔴 **{item['TP1']}** | 🚀 **{item['TP2']}**")
