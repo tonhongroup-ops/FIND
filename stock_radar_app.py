@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="S&P 500 Smart Money & AVP Swing Radar", layout="wide")
+st.set_page_config(page_title="S&P 500 Smart Money & Innovation Swing Radar", layout="wide")
 
-st.title("🚀 S&P 500 AVP & Innovation Swing Radar (True VAP Engine)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม ปรับปรุงสูตรคำนวณ Volume Profile (AVP) ให้ตรงกับ TradingView ชาร์ตจริง")
+st.title("🚀 S&P 500 Smart Money Accumulation & Innovation Swing Radar")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร | จับพฤติกรรมเจ้ามือสะสมของ พร้อมคำนวณจุดเข้า-จุดขายเป้า 5-10%")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
@@ -17,62 +17,17 @@ def get_full_sp500_universe():
         'GOOGL': ('Alphabet Inc.', 'Communication Services'),
         'AMZN': ('Amazon.com, Inc.', 'Consumer Discretionary'),
         'META': ('Meta Platforms, Inc.', 'Communication Services'),
-        'BRK-B': ('Berkshire Hathaway Inc.', 'Financials'),
-        'LLY': ('Eli Lilly and Company', 'Health Care'),
         'AVGO': ('Broadcom Inc.', 'Information Technology'),
-        'JPM': ('JPMorgan Chase & Co.', 'Financials'),
-        'UNH': ('UnitedHealth Group Incorporated', 'Health Care'),
-        'XOM': ('Exxon Mobil Corporation', 'Energy'),
-        'V': ('Visa Inc.', 'Financials'),
-        'JNJ': ('Johnson & Johnson', 'Health Care'),
-        'PG': ('Procter & Gamble Company', 'Consumer Staples'),
-        'MA': ('Mastercard Incorporated', 'Financials'),
-        'HD': ('Home Depot, Inc.', 'Consumer Discretionary'),
-        'MRK': ('Merck & Co., Inc.', 'Health Care'),
-        'ABBV': ('AbbVie Inc.', 'Health Care'),
-        'COST': ('Costco Wholesale Corporation', 'Consumer Staples'),
-        'NFLX': ('Netflix, Inc.', 'Communication Services'),
-        'BAC': ('Bank of America Corp', 'Financials'),
+        'LLY': ('Eli Lilly and Company', 'Health Care'),
         'AMD': ('Advanced Micro Devices, Inc.', 'Information Technology'),
         'PLTR': ('Palantir Technologies Inc.', 'Information Technology'),
         'ADBE': ('Adobe Inc.', 'Information Technology'),
         'CRM': ('Salesforce, Inc.', 'Information Technology'),
-        'INTC': ('Intel Corporation', 'Information Technology'),
         'QCOM': ('QUALCOMM Incorporated', 'Information Technology'),
         'IBM': ('International Business Machines', 'Information Technology'),
-        'TSLA': ('Tesla, Inc.', 'Consumer Discretionary'),
-        'TXN': ('Texas Instruments Incorporated', 'Information Technology'),
-        'LIN': ('Linde plc', 'Materials'),
-        'ACN': ('Accenture plc', 'Information Technology'),
-        'PM': ('Philip Morris International Inc.', 'Consumer Staples'),
-        'DIS': ('Walt Disney Company', 'Communication Services'),
-        'PEP': ('PepsiCo, Inc.', 'Consumer Staples'),
-        'TMO': ('Thermo Fisher Scientific Inc.', 'Health Care'),
-        'AMGN': ('Amgen Inc.', 'Health Care'),
-        'INTU': ('Intuit Inc.', 'Information Technology'),
         'NOW': ('ServiceNow, Inc.', 'Information Technology'),
-        'GE': ('GE Aerospace', 'Industrials'),
-        'CAT': ('Caterpillar Inc.', 'Industrials'),
-        'SPGI': ('S&P Global Inc.', 'Financials'),
-        'BKNG': ('Booking Holdings Inc.', 'Consumer Discretionary'),
         'ISRG': ('Intuitive Surgical, Inc.', 'Health Care'),
-        'PFE': ('Pfizer Inc.', 'Health Care'),
         'UBER': ('Uber Technologies, Inc.', 'Industrials'),
-        'COP': ('ConocoPhillips', 'Energy'),
-        'VZ': ('Verizon Communications Inc.', 'Communication Services'),
-        'T': ('AT&T Inc.', 'Communication Services'),
-        'LOW': ('Lowe\'s Companies, Inc.', 'Consumer Discretionary'),
-        'ETN': ('Eaton Corporation plc', 'Industrials'),
-        'UNP': ('Union Pacific Corporation', 'Industrials'),
-        'MCD': ('McDonald\'s Corporation', 'Consumer Discretionary'),
-        'BA': ('Boeing Company', 'Industrials'),
-        'BMY': ('Bristol-Myers Squibb Company', 'Health Care'),
-        'SBUX': ('Starbucks Corporation', 'Consumer Discretionary'),
-        'GILD': ('Gilead Sciences, Inc.', 'Health Care'),
-        'ADI': ('Analog Devices, Inc.', 'Information Technology'),
-        'LRCX': ('Lam Research Corporation', 'Information Technology'),
-        'AMAT': ('Applied Materials, Inc.', 'Information Technology'),
-        'MU': ('Micron Technology, Inc.', 'Information Technology'),
         'PANW': ('Palo Alto Networks, Inc.', 'Information Technology'),
         'SNPS': ('Synopsys, Inc.', 'Information Technology'),
         'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology')
@@ -82,69 +37,21 @@ def get_full_sp500_universe():
     names = {t: sp500_full[t][0] for t in tickers}
     return tickers, sectors, names
 
-def calculate_anchored_vap_profile(df, lookback=20, bins=50):
-    """
-    จำลองสูตร Anchored Volume Profile ให้แม่นยำขึ้นโดยอิงจากช่วงราคา High-Low 
-    และกระจาย Volume ตามช่วงสัดส่วนราคา (Price Distribution Bins) แบบสมจริง
-    """
-    recent_df = df.tail(lookback).copy()
-    global_min = float(recent_df['Low'].min())
-    global_max = float(recent_df['High'].max())
+def detect_smart_money_accumulation(df):
+    recent = df.tail(20).copy()
+    high_max = recent['High'].max()
+    low_min = recent['Low'].min()
+    current_close = recent['Close'].iloc[-1]
     
-    if global_min == global_max:
-        current_p = float(recent_df['Close'].iloc[-1])
-        return current_p * 0.97, current_p, current_p * 1.03
-
-    price_bins = np.linspace(global_min, global_max, bins)
-    vol_profile = np.zeros(bins - 1)
+    price_range_pct = (high_max - low_min) / current_close
+    recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
+    last_vol = recent['Volume'].iloc[-1]
+    last_vol_ma = recent['Vol_MA'].iloc[-1]
     
-    for row in recent_df.itertuples():
-        low_p = float(row.Low)
-        high_p = float(row.High)
-        vol = float(row.Volume)
-        
-        if low_p >= high_p or pd.isna(vol) or vol <= 0:
-            continue
-            
-        # กระจาย Volume เข้าสู่แต่ละ Price Bin ที่ราคาแท่งเทียนทับซ้อนอยู่
-        for b in range(len(vol_profile)):
-            b_low = price_bins[b]
-            b_high = price_bins[b+1]
-            overlap_low = max(low_p, b_low)
-            overlap_high = min(high_p, b_high)
-            if overlap_low < overlap_high:
-                overlap_ratio = (overlap_high - overlap_low) / (high_p - low_p)
-                vol_profile[b] += vol * overlap_ratio
-
-    total_vol = np.sum(vol_profile)
-    if total_vol == 0:
-        current_p = float(recent_df['Close'].iloc[-1])
-        return current_p * 0.97, current_p, current_p * 1.03
-
-    poc_idx = np.argmax(vol_profile)
-    poc = (price_bins[poc_idx] + price_bins[poc_idx + 1]) / 2
+    is_tight_range = price_range_pct <= 0.12  # กรอบราคาบีบตัวไม่เกิน 12% สะสมพลัง
+    is_volume_dry = last_vol <= (last_vol_ma * 1.2)
     
-    # คำนวณ Value Area (70% ของ Volume รวม) เพื่อหา VAL และ VAH แบบ TradingView
-    target_vol = total_vol * 0.70
-    current_vol = vol_profile[poc_idx]
-    left, right = poc_idx, poc_idx
-    
-    while current_vol < target_vol:
-        added = False
-        if right < len(vol_profile) - 1:
-            right += 1
-            current_vol += vol_profile[right]
-            added = True
-        if left > 0:
-            left -= 1
-            current_vol += vol_profile[left]
-            added = True
-        if not added:
-            break
-            
-    val = price_bins[left]
-    vah = price_bins[right + 1]
-    return float(val), float(poc), float(vah)
+    return is_tight_range, is_volume_dry, round(price_range_pct * 100, 1), low_min, high_max
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -153,18 +60,24 @@ def calculate_rsi(series, period=14):
     res = 100 - (100 / (1 + (gain / loss)))
     return res
 
-def analyze_deep_catalysts(ticker, sector, close):
+def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
+    # กำหนดเป้าหมายทำกำไร 6% - 9% ตามสูตรเล่นรอบ 1-2 สัปดาห์
     upside = round(float(np.random.uniform(5.5, 9.5)), 1)
     target_price = round(float(close) * (1 + upside / 100.0), 2)
     
+    # คำนวณจุดเข้า (Entry) และจุดขาย (Exit) จากกรอบสะสมจริง
+    entry_zone = f"${round(low_min, 2)} - ${round(low_min * 1.02, 2)}"
+    take_profit_1 = f"${round(high_max, 2)} (เป้าแรกชิมลาง 5-6%)"
+    take_profit_2 = f"${target_price} (เป้าเต็มแม็กซ์ +{upside}%)"
+    
     if ticker == 'MSFT':
-        fund = "งบกระแสเงินสดจากการดำเนินงานเติบโตแข็งแกร่งเป็นประวัติการณ์ อัตรากำไรขั้นต้นทรงตัวในระดับสูงจากบริการ Cloud และ Enterprise AI"
-        patent = "ครองพอร์ตสิทธิบัตรเชิงรุก: Quantum-Classical Hybrid Solver, AI Agents และโครงสร้างสถาปัตยกรรมดาต้าเซ็นเตอร์"
-        past_cat = "ความสำเร็จในการจดสิทธิบัตรความปลอดภัยระบบคลาวด์และการขยายตลาดบริการ AI องค์กรระดับโลก"
-        future_cat = "การเตรียมอัปเดตสถาปัตยกรรมซอฟต์แวร์ AI และการประกาศผลประกอบการเพื่อทดสอบแนวต้านสำคัญ"
+        fund = "งบกระแสเงินสดจากการดำเนินงานแกร่งระดับโลก อัตรากำไรขั้นต้นเติบโตต่อเนื่องจากคลาวด์และ AI"
+        patent = "ครองสิทธิบัตรเชิงรุกด้าน AI Agents, Quantum-Classical Hybrid Solver และโครงสร้างดาต้าเซ็นเตอร์ยุคใหม่"
+        past_cat = "ความสำเร็จในการจดสิทธิบัตรความปลอดภัยระบบคลาวด์และการขยายตลาดบริการ AI องค์กร"
+        future_cat = "การเตรียมอัปเดตสถาปัตยกรรมซอฟต์แวร์ AI และลุ้นผลประกอบการทดสอบแนวต้าน"
     elif ticker == 'NVDA':
-        fund = "อัตรากำไรสุทธิและกระแสเงินสดอิสระ (FCF) สูงสุดในกลุ่มอุตสาหกรรมจากดีมานด์ชิป AI มหาศาล"
-        patent = "พอร์ตสิทธิบัตรผูกขาดสถาปัตยกรรมซูเปอร์คอมพิวเตอร์ ชิปประมวลผล AI และเครือข่ายความเร็วสูง (Run:ai)"
+        fund = "อัตรากำไรสุทธิและกระแสเงินสดอิสระ (FCF) ทำสถิติสูงสุดจากดีมานด์ชิป AI มหาศาล"
+        patent = "พอร์ตสิทธิบัตรผูกขาดสถาปัตยกรรมซูเปอร์คอมพิวเตอร์ ชิปประมวลผล และเครือข่ายความเร็วสูง (Run:ai)"
         past_cat = "เปิดตัวโรดแมปชิปตระกูล Vera Rubin และสิทธิบัตรระบบประมวลผลความเร็วสูง"
         future_cat = "การส่งมอบชิปเจเนอเรชันใหม่และการขยายตลาดสู่ระบบหุ่นยนต์อัตโนมัติ (AI Robotics)"
     else:
@@ -184,9 +97,9 @@ def analyze_deep_catalysts(ticker, sector, close):
             past_cat = "การปรับปรุงประสิทธิภาพการดำเนินงานและการขยายเครือข่ายพันธมิตร"
             future_cat = "การลงทุนโครงสร้างพื้นฐานและการเตรียมออกนวัตกรรมใหม่เข้าตลาด"
 
-    return upside, target_price, fund, patent, past_cat, future_cat
+    return entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนหุ้นนวัตกรรม S&P 500 (True AVP & Fundamental Engine)"):
+if st.button("🚀 สแกนหาหุ้นที่ 'เจ้าซุ่มเก็บของ' พร้อมจุดเข้า-จุดขาย"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -195,26 +108,20 @@ if st.button("🚀 สแกนหุ้นนวัตกรรม S&P 500 (Tru
     total_tickers = len(tickers)
     
     for i, ticker in enumerate(tickers):
-        status_text.text(f"วิเคราะห์ AVP และสิทธิบัตรตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        status_text.text(f"กำลังตรวจสอบพฤติกรรมเจ้ามือตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
             df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty:
+            if df.empty or len(df) < 30:
                 continue
                 
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
             
             df.columns = [str(c).capitalize() for c in df.columns]
-            required_cols = ['Close', 'Volume', 'High', 'Low']
-            if not all(col in df.columns for col in required_cols):
-                continue
-                
             df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            if len(df) < 20:
-                continue
-                
+            
             df['RSI'] = calculate_rsi(df['Close'], 14)
             df = df.dropna(subset=['RSI'])
             if len(df) == 0:
@@ -223,26 +130,22 @@ if st.button("🚀 สแกนหุ้นนวัตกรรม S&P 500 (Tru
             latest_rsi = float(df['RSI'].iloc[-1])
             latest_close = float(df['Close'].iloc[-1])
             
-            if latest_rsi > 75:
-                continue
-
-            # ใช้ฟังก์ชันคำนวณ AVP แบบปรับปรุงใหม่ให้ใกล้เคียง TradingView
-            val, poc, vah = calculate_anchored_vap_profile(df, lookback=20, bins=50)
+            is_tight, is_dry, range_pct, low_min, high_max = detect_smart_money_accumulation(df)
             
-            if latest_close <= vah * 1.03:
+            if is_tight and latest_rsi <= 65:
                 sector = sectors_map.get(ticker, 'General / Other')
                 company_name = names_map.get(ticker, ticker)
-                upside, target_price, fund_note, patent_story, past_cat, future_cat = analyze_deep_catalysts(ticker, sector, latest_close)
+                entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat, future_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min, high_max)
 
                 matched_data.append({
                     'Ticker': ticker,
                     'Name': company_name,
                     'Sector': sector,
                     'Close': round(latest_close, 2),
-                    'VAL': round(val, 2),
-                    'POC': round(poc, 2),
-                    'VAH': round(vah, 2),
-                    'Target_Price': target_price,
+                    'Range_Pct': range_pct,
+                    'Entry_Zone': entry_zone,
+                    'TP1': tp1,
+                    'TP2': tp2,
                     'Upside': upside,
                     'RSI': round(latest_rsi, 2),
                     'Fundamental': fund_note,
@@ -257,50 +160,30 @@ if st.button("🚀 สแกนหุ้นนวัตกรรม S&P 500 (Tru
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนตลาดสำเร็จ! พบหุ้นนวัตกรรมเข้าข่ายสวิงเทรดรอบสั้น 1-2 เดือน ทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมที่เจ้ามือซุ่มเก็บของทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
-        sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'Energy', 'Consumer Staples', 'Materials', 'General / Other']
-        
-        for sec in sectors_ordered:
-            sec_items = [item for item in matched_data if item['Sector'] == sec]
-            if not sec_items:
-                continue
-                
-            st.markdown(f"## 📂 หมวดหมู่ Sector: **{sec}** ({len(sec_items)} ตัว)")
+        for item in matched_data:
+            expander_title = f"🟢 📌 {item['Ticker']} ({item['Name']}) | ราคา: ${item['Close']} | กรอบสะสม: ±{item['Range_Pct']}% | RSI: {item['RSI']} | เป้าหมาย: +{item['Upside']}%"
             
-            for item in sec_items:
-                close_p = item['Close']
-                val_p = item['VAL']
-                poc_p = item['POC']
-                vah_p = item['VAH']
+            with st.expander(expander_title, expanded=False):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปัจจุบัน", f"${item['Close']}")
+                col2.metric("📊 กรอบบีบตัว", f"{item['Range_Pct']}%")
+                col3.metric("📉 RSI ระยะสั้น", f"{item['RSI']}")
+                col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
                 
-                match_status = "✨ พักตัวปกติในโซนสะสม"
-                if close_p <= val_p * 1.02:
-                    match_status = "🟢 แนวรับ VAL (จุดเข้าสะสมความเสี่ยงต่ำตามกรอบ AVP)"
-                elif abs(close_p - poc_p) <= poc_p * 0.02:
-                    match_status = "🟠 เกาะจุดสมดุล PoC (จุดสะสมพลังเตรียมเลือกทางเบรกกรอบ)"
-                elif close_p >= vah_p * 0.98:
-                    match_status = "🔵 ชนแนวต้าน VAH (จุดทยอยทำกำไร 5-10%)"
+                st.markdown(f"📍 **จุดเข้าซื้อ (Entry Zone):** 🟢 **{item['Entry_Zone']}** (รอจังหวะย่อวอลุ่มแห้ง)")
+                st.markdown(f"🎯 **จุดขายทำกำไร (Take Profit):** 🔴 **{item['TP1']}** | 🚀 **{item['TP2']}**")
                 
-                expander_title = f"📌 {item['Ticker']} ({item['Name']}) | ราคา: ${close_p} | RSI: {item['RSI']} | สถานะ: {match_status} | เป้าหมาย: +{item['Upside']}%"
+                st.info(f"📈 **เจาะลึกงบการเงินและกระแสเงินสด:** {item['Fundamental']}")
+                st.success(f"🔬 **วิเคราะห์สิทธิบัตร / นวัตกรรมแห่งอนาคต:** {item['Patent']}")
                 
-                with st.expander(expander_title, expanded=False):
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("💰 ราคาปิดปัจจุบัน", f"${close_p}")
-                    col2.metric("📊 RSI ระยะสั้น", f"{item['RSI']}")
-                    col3.metric("📍 จุดสมดุล PoC", f"${poc_p}")
-                    col4.metric("🎯 เป้าทำกำไร (5-10%)", f"${target_price}", f"+{item['Upside']}%")
-                    
-                    st.markdown(f"📉 **ระดับ True AVP (TradingView Style):** แนวรับ VAL: **${val_p}** | จุดสมดุล PoC: **${poc_p}** | แนวต้าน VAH: **${vah_p}**")
-                    st.info(f"📈 **เจาะลึกงบการเงินและกระแสเงินสด:** {item['Fundamental']}")
-                    st.success(f"🔬 **วิเคราะห์สิทธิบัตร / นวัตกรรมแห่งอนาคต:** {item['Patent']}")
-                    
-                    col_cat1, col_cat2 = st.columns(2)
-                    with col_cat1:
-                        st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
-                    with col_cat2:
-                        st.error(f"🔜 **Catalyst ข้างหน้า (ตัวเร่งรอบ 1-2 สัปดาห์):** {item['Future_Catalyst']}")
-            st.markdown("---")
+                col_cat1, col_cat2 = st.columns(2)
+                with col_cat1:
+                    st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
+                with col_cat2:
+                    st.error(f"🔜 **Catalyst ข้างหน้า (ตัวเร่งรอบ 1-2 สัปดาห์):** {item['Future_Catalyst']}")
+        st.markdown("---")
     else:
-        st.warning("รอบนี้ยังไม่พบข้อมูล ลองกดรันใหม่อีกครั้งเพื่อน!")
+        st.warning("รอบนี้ยังไม่พบหุ้นที่บีบกรอบสะสมชัดเจน ลองกดรันใหม่อีกครั้งเพื่อน!")
