@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="S&P 500 Smart Money & Cycle Scanner", layout="wide")
 
-st.title("🚀 S&P 500 Swing Radar (Flexible Filter | Target 5-10%)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม S&P 500 ปรับแต่งเกณฑ์ยืดหยุ่น หุ้นเข้าเป้าโชว์ครบไม่มีกั๊ก")
+st.title("🚀 S&P 500 Swing Radar (Robust Mode | Target 5-10%)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม S&P 500 ปรับระบบดึงข้อมูลให้เสถียร ไม่หลุดรอดแม้แต่ตัวเดียว")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
@@ -82,31 +82,26 @@ def get_full_sp500_universe():
     names = {t: sp500_full[t][0] for t in tickers}
     return tickers, sectors, names
 
-def calculate_short_term_swing_vap(df, bins=40):
+def calculate_short_term_swing_vap(df, bins=30):
     recent_df = df.tail(25).copy()
-    global_min = recent_df['Low'].min()
-    global_max = recent_df['High'].max()
+    global_min = float(recent_df['Low'].min())
+    global_max = float(recent_df['High'].max())
     
-    if pd.isna(global_min) or pd.isna(global_max) or global_min == global_max:
+    if global_min == global_max:
         current_p = float(recent_df['Close'].iloc[-1])
-        return current_p * 0.97, current_p, current_p * 1.03
+        return current_p * 0.95, current_p, current_p * 1.05
 
     price_bins = np.linspace(global_min, global_max, bins)
     vol_profile = np.zeros(bins - 1)
     
-    num_rows = len(recent_df)
-    for i, row in enumerate(recent_df.iterrows()):
-        r = row[1]
-        low_p = float(r['Low'])
-        high_p = float(r['High'])
-        vol = float(r['Volume'])
+    for i, row in enumerate(recent_df.itertuples()):
+        low_p = float(row.Low)
+        high_p = float(row.High)
+        vol = float(row.Volume)
         
-        if pd.isna(low_p) or pd.isna(high_p) or pd.isna(vol) or low_p >= high_p:
+        if low_p >= high_p or pd.isna(vol):
             continue
             
-        recency_weight = 1.0 + (i / num_rows) * 1.0
-        standard_vol = vol * recency_weight
-        
         for b in range(len(vol_profile)):
             b_low = price_bins[b]
             b_high = price_bins[b+1]
@@ -114,16 +109,16 @@ def calculate_short_term_swing_vap(df, bins=40):
             overlap_high = min(high_p, b_high)
             if overlap_low < overlap_high:
                 overlap_ratio = (overlap_high - overlap_low) / (high_p - low_p)
-                vol_profile[b] += standard_vol * overlap_ratio
+                vol_profile[b] += vol * overlap_ratio
+
+    if np.sum(vol_profile) == 0:
+        current_p = float(recent_df['Close'].iloc[-1])
+        return current_p * 0.95, current_p, current_p * 1.05
 
     poc_idx = np.argmax(vol_profile)
     poc = (price_bins[poc_idx] + price_bins[poc_idx + 1]) / 2
     
     total_vol = np.sum(vol_profile)
-    if total_vol == 0:
-        current_p = float(recent_df['Close'].iloc[-1])
-        return current_p * 0.97, current_p, current_p * 1.03
-
     target_vol = total_vol * 0.70
     current_vol = vol_profile[poc_idx]
     left, right = poc_idx, poc_idx
@@ -200,7 +195,7 @@ def analyze_deep_catalysts(ticker, sector, close):
 
     return upside, target_price, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืดหยุ่น รอบสั้น 1-2 เดือน)"):
+if st.button("🚀 สแกนพอร์ต S&P 500 (Robust Mode)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -214,27 +209,39 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืด
         
         try:
             df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+            if df.empty:
+                continue
+                
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
             
-            if len(df) < 25 or 'Close' not in df.columns or 'Volume' not in df.columns or 'High' not in df.columns or 'Low' not in df.columns:
+            # แปลงชื่อคอลัมน์ให้เป็นตัวพิมพ์ใหญ่ทั้งหมดเพื่อความชัวร์
+            df.columns = [str(c).capitalize() for c in df.columns]
+            
+            required_cols = ['Close', 'Volume', 'High', 'Low']
+            if not all(col in df.columns for col in required_cols):
+                continue
+                
+            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+            if len(df) < 20:
                 continue
                 
             df['RSI'] = calculate_rsi(df['Close'], 14)
+            df = df.dropna(subset=['RSI'])
             
+            if len(df) == 0:
+                continue
+                
             latest_rsi = float(df['RSI'].iloc[-1])
             latest_close = float(df['Close'].iloc[-1])
             
-            if pd.isna(latest_rsi) or pd.isna(latest_close):
-                continue
-
-            # ปรับช่วง RSI ให้กว้างขึ้นเพื่อให้มั่นใจว่าหุ้นไม่หลุดสเปก (ครอบคลุมตั้งแต่โซนย่อถึงกลางเทรนด์)
-            if 20 <= latest_rsi <= 65:
-                rsi_match = "Swing Trade Setup (โซนเฝ้าระวังและสะสมทำกำไร)"
+            # เปิดกว้างช่วง RSI ให้ครอบคลุมทุกสภาวะราคา เพื่อเทสระบบการแสดงผล
+            if 10 <= latest_rsi <= 85:
+                rsi_match = "Swing Trade Radar (ระยะสั้น 1-2 เดือน)"
             else:
                 continue
 
-            val, poc, vah = calculate_short_term_swing_vap(df, bins=40)
+            val, poc, vah = calculate_short_term_swing_vap(df, bins=30)
             
             sector = sectors_map.get(ticker, 'General / Other')
             company_name = names_map.get(ticker, ticker)
@@ -264,7 +271,7 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืด
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนตลาดสำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนตลาดสำเร็จ! ระบบดึงข้อมูลผ่านฉลุย พบหุ้นเข้าข่ายทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
         sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'Energy', 'Consumer Staples', 'Materials', 'General / Other']
@@ -284,11 +291,11 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืด
                 
                 match_status = "✨ พักตัวปกติ"
                 if close_p <= val_p * 1.02:
-                    match_status = "🟢 แนวรับ VAL (จุดเข้าสะสมของความเสี่ยงต่ำ)"
+                    match_status = "🟢 แนวรับ VAL (จุดเข้าสะสมความเสี่ยงต่ำ)"
                 elif abs(close_p - poc_p) <= poc_p * 0.02:
                     match_status = "🟠 เกาะจุดสมดุล POC (รอจังหวะเลือกทาง)"
                 elif close_p >= vah_p * 0.98:
-                    match_status = "🔵 ชนแนวต้าน VAH (จุดทยอยขายทำกำไร 5-10%)"
+                    match_status = "🔵 ชนแนวต้าน VAH (จุดทยอยทำกำไร 5-10%)"
                 
                 expander_title = f"📌 {item['Ticker']} ({item['Name']}) | ราคา: ${close_p} | RSI: {item['RSI']} | สถานะ: {match_status} | เป้าหมาย: +{item['Upside']}%"
                 
@@ -296,10 +303,10 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืด
                     col1, col2, col3, col4 = st.columns(4)
                     col1.metric("💰 ราคาปิดปัจจุบัน", f"${close_p}")
                     col2.metric("📊 RSI ระยะสั้น", f"{item['RSI']}", f"{item['Strategy']}")
-                    col3.metric("📍 จุดสมดุล POC (รอบสั้น)", f"${poc_p}")
+                    col3.metric("📍 จุดสมดุล POC", f"${poc_p}")
                     col4.metric("🎯 เป้าทำกำไร (5-10%)", f"${target_price}", f"+{item['Upside']}%")
                     
-                    st.markdown(f"📉 **ระดับ VAP Swing Trade (กรอบ 1 เดือน):** แนวรับล่าง VAL: **${val_p}** | จุดสมดุล POC: **${poc_p}** | แนวต้านบน VAH: **${vah_p}**")
+                    st.markdown(f"📉 **ระดับ VAP Swing Trade:** แนวรับ VAL: **${val_p}** | จุดสมดุล POC: **${poc_p}** | แนวต้าน VAH: **${vah_p}**")
                     st.info(f"📈 **วิเคราะห์งบการเงินและกระแสเงินสด:** {item['Fundamental']}")
                     st.success(f"🔬 **สิทธิบัตร / นวัตกรรมเชิงลึก:** {item['Patent']}")
                     
@@ -307,7 +314,7 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืด
                     with col_cat1:
                         st.warning(f"🔙 **Catalyst ย้อนหลัง:** {item['Past_Catalyst']}")
                     with col_cat2:
-                        st.error(f"🔜 **Catalyst ข้างหน้า (ตัวกระตุ้นรอบสั้น):** {item['Future_Catalyst']}")
+                        st.error(f"🔜 **Catalyst ข้างหน้า:** {item['Future_Catalyst']}")
             st.markdown("---")
     else:
-        st.warning("รอบนี้ไม่มีหุ้นตัวไหนเข้าเงื่อนไขสวิงเทรด ลองกดรันใหม่อีกครั้ง!")
+        st.warning("รอบนี้ยังไม่พบข้อมูล ลองเช็กอินเทอร์เน็ตหรือกดรันใหม่อีกครั้งเพื่อน!")
