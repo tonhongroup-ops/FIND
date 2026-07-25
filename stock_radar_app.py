@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Smart Money Multi-Timeframe Radar (Global & SET100)", layout="wide")
 
 st.title("🚀 Smart Money Multi-Timeframe Radar (Global & SET100)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | เพิ่มไทม์เฟรมครบถ้วนถึง 2 เดือน, RSI เฉลี่ย, และ % Volume Change จัดเต็ม")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | เพิ่ม Volume Change @ ราคาซื้อขายหนาแน่นสุด (POC) ทุกกรอบเวลา")
 
 @st.cache_data(ttl=86400)
 def get_extended_universe():
@@ -90,8 +90,7 @@ def get_extended_universe():
 
 def calculate_timeframe_metrics(df):
     """
-    เพิ่มไทม์เฟรม 2 เดือน (~40 แท่ง) เข้ามาในตารางเปรียบเทียบ
-    เรียงลำดับ: เมื่อวันก่อน, 3 วัน, 1 อาทิตย์, 2 อาทิตย์, 1 เดือน, 2 เดือน
+    คำนวณกรอบเวลาพร้อมหา 'ราคาที่มีการซื้อขายกันหนาแน่นสุด (POC)' และ Volume Change ในจุดนั้น
     """
     timeframes = {
         'เมื่อวันก่อน': 1,
@@ -119,8 +118,18 @@ def calculate_timeframe_metrics(df):
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
         
+        # คำนวณ Volume Change รวมของช่วงเวลานั้น
         avg_sub_vol = sub_df['Volume'].mean()
         vol_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
+        
+        # หาแท่ง/ราคาที่มีการซื้อขายกันมากที่สุด (Point of Control - POC) ในกรอบเวลานี้
+        # โดยอิงจากราคา Close ที่มี Volume สูงสุดในย่านนั้น หรือเฉลี่ย High-Low ที่มีวอลุ่มสะสมหนาแน่น
+        max_vol_idx = sub_df['Volume'].idxmax()
+        poc_price = round(sub_df.loc[max_vol_idx, 'Close'], 2)
+        poc_vol = sub_df.loc[max_vol_idx, 'Volume']
+        
+        # คำนวณ % Volume Change เฉพาะที่ราคานี้เทียบกับค่าเฉลี่ยปกติ
+        poc_vol_change = round(((poc_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
         
         results[label] = {
             'start_date': start_date,
@@ -129,7 +138,9 @@ def calculate_timeframe_metrics(df):
             'high_pct': high_pct,
             'low_pct': low_pct,
             'range_pct': total_range_pct,
-            'vol_change_pct': vol_change_pct
+            'vol_change_pct': vol_change_pct,
+            'poc_price': poc_price,
+            'poc_vol_change': poc_vol_change
         }
         
     rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
@@ -184,7 +195,7 @@ target_universe = sp500_dict if "S&P" in market_choice else set100_dict
 all_sectors = sorted(list(set([v[1] for v in target_universe.values()])))
 selected_sectors = st.sidebar.multiselect("📂 กรองตาม Sector", all_sectors, default=all_sectors)
 
-if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (เพิ่มกรอบ 2 เดือนครบสูตร)"):
+if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (เพิ่ม POC & Volume Change แบบจัดเต็ม)"):
     matched_data = []
     
     progress_bar = st.progress(0)
@@ -269,7 +280,7 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                     st.markdown(f"🔮 **Catalyst สำคัญใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
                     st.markdown("---")
                     
-                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและ % Volume Change (เรียงจาก: เมื่อวันก่อน ➔ 3 วัน ➔ 1 อาทิตย์ ➔ 2 อาทิตย์ ➔ 1 เดือน ➔ 2 เดือน)")
+                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, % Volume Change และจุดราคาซื้อขายหนาแน่นสุด (POC)")
                     tf_rows = []
                     for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                         if tf_name in item['TF_Data']:
@@ -280,7 +291,9 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                                 'ราคาสูงสุด (High)': f"{curr_symbol}{info['high']} ({info['high_pct']:+.1f}%)",
                                 'ราคาต่ำสุด (Low)': f"{curr_symbol}{info['low']} ({info['low_pct']:+.1f}%)",
                                 'ความกว้างกรอบ': f"{info['range_pct']}%",
-                                '% Volume Change': f"{info['vol_change_pct']:+.1f}%"
+                                'POC (ราคาซื้อขายหนาแน่นสุด)': f"{curr_symbol}{info['poc_price']}",
+                                '% Vol Change @ POC': f"{info['poc_vol_change']:+.1f}%",
+                                '% Vol Change (รวม)': f"{info['vol_change_pct']:+.1f}%"
                             })
                     st.table(pd.DataFrame(tf_rows))
                     
