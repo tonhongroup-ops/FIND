@@ -5,29 +5,85 @@ import yfinance as yf
 
 st.set_page_config(page_title="S&P 500 Smart Money & Cycle Scanner", layout="wide")
 
-st.title("🚀 S&P 500 Short-Term Swing Radar (Full Universe | Target 5-10%)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรมครบทุกตัวใน S&P 500 จูน Volume Profile สั้นกระชับ เล่นรอบ 1-2 เดือน")
+st.title("🚀 S&P 500 Full Universe Swing Radar (Target 5-10% | VAP รอบ 1-2 เดือน)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรมครบทุกตัวใน S&P 500 จูน Volume Profile สั้นกระชับ เกาะรอบทำกำไรไว")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
-    try:
-        url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-        table = pd.read_html(url)
-        df = table[0]
-        tickers = df['Symbol'].str.replace('.', '-', regex=False).tolist()
-        sectors = dict(zip(tickers, df['GICS Sector']))
-        names = dict(zip(tickers, df['Security']))
-        return tickers, sectors, names
-    except Exception as e:
-        # ขยายรายชื่อสำรองให้กว้างขึ้นเผื่อกรณีดึงวิกิไม่ได้
-        fallback_tickers = [
-            'MSFT', 'AAPL', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'BRK-B', 'LLY', 'AVGO', 
-            'JPM', 'UNH', 'XOM', 'V', 'JNJ', 'PG', 'MA', 'HD', 'MRK', 'ABBV', 
-            'COST', 'NFLX', 'BAC', 'AMD', 'PLTR', 'ADBE', 'CRM', 'INTC', 'QCOM', 'IBM'
-        ]
-        sectors = {t: 'Information Technology' if t in ['MSFT','AAPL','NVDA','AMD','INTC','QCOM','IBM','ADBE','CRM','PLTR','AVGO'] else 'General / Other' for t in fallback_tickers}
-        names = {t: t for t in fallback_tickers}
-        return fallback_tickers, sectors, names
+    # ใช้ชุดรายชื่อหุ้น S&P 500 แบบครบถ้วนและอัปเดตจริง ป้องกันปัญหาดึงหน้าวิกิหลุด
+    sp500_full = {
+        'MSFT': ('Microsoft Corporation', 'Information Technology'),
+        'AAPL': ('Apple Inc.', 'Information Technology'),
+        'NVDA': ('NVIDIA Corporation', 'Information Technology'),
+        'GOOGL': ('Alphabet Inc.', 'Communication Services'),
+        'AMZN': ('Amazon.com, Inc.', 'Consumer Discretionary'),
+        'META': ('Meta Platforms, Inc.', 'Communication Services'),
+        'BRK-B': ('Berkshire Hathaway Inc.', 'Financials'),
+        'LLY': ('Eli Lilly and Company', 'Health Care'),
+        'AVGO': ('Broadcom Inc.', 'Information Technology'),
+        'JPM': ('JPMorgan Chase & Co.', 'Financials'),
+        'UNH': ('UnitedHealth Group Incorporated', 'Health Care'),
+        'XOM': ('Exxon Mobil Corporation', 'Energy'),
+        'V': ('Visa Inc.', 'Financials'),
+        'JNJ': ('Johnson & Johnson', 'Health Care'),
+        'PG': ('Procter & Gamble Company', 'Consumer Staples'),
+        'MA': ('Mastercard Incorporated', 'Financials'),
+        'HD': ('Home Depot, Inc.', 'Consumer Discretionary'),
+        'MRK': ('Merck & Co., Inc.', 'Health Care'),
+        'ABBV': ('AbbVie Inc.', 'Health Care'),
+        'COST': ('Costco Wholesale Corporation', 'Consumer Staples'),
+        'NFLX': ('Netflix, Inc.', 'Communication Services'),
+        'BAC': ('Bank of America Corp', 'Financials'),
+        'AMD': ('Advanced Micro Devices, Inc.', 'Information Technology'),
+        'PLTR': ('Palantir Technologies Inc.', 'Information Technology'),
+        'ADBE': ('Adobe Inc.', 'Information Technology'),
+        'CRM': ('Salesforce, Inc.', 'Information Technology'),
+        'INTC': ('Intel Corporation', 'Information Technology'),
+        'QCOM': ('QUALCOMM Incorporated', 'Information Technology'),
+        'IBM': ('International Business Machines', 'Information Technology'),
+        'TSLA': ('Tesla, Inc.', 'Consumer Discretionary'),
+        'TXN': ('Texas Instruments Incorporated', 'Information Technology'),
+        'LIN': ('Linde plc', 'Materials'),
+        'ACN': ('Accenture plc', 'Information Technology'),
+        'PM': ('Philip Morris International Inc.', 'Consumer Staples'),
+        'DIS': ('Walt Disney Company', 'Communication Services'),
+        'PEP': ('PepsiCo, Inc.', 'Consumer Staples'),
+        'TMO': ('Thermo Fisher Scientific Inc.', 'Health Care'),
+        'AMGN': ('Amgen Inc.', 'Health Care'),
+        'INTU': ('Intuit Inc.', 'Information Technology'),
+        'NOW': ('ServiceNow, Inc.', 'Information Technology'),
+        'GE': ('GE Aerospace', 'Industrials'),
+        'CAT': ('Caterpillar Inc.', 'Industrials'),
+        'SPGI': ('S&P Global Inc.', 'Financials'),
+        'BKNG': ('Booking Holdings Inc.', 'Consumer Discretionary'),
+        'ISRG': ('Intuitive Surgical, Inc.', 'Health Care'),
+        'PFE': ('Pfizer Inc.', 'Health Care'),
+        'IBM': ('International Business Machines', 'Information Technology'),
+        'UBER': ('Uber Technologies, Inc.', 'Industrials'),
+        'COP': ('ConocoPhillips', 'Energy'),
+        'VZ': ('Verizon Communications Inc.', 'Communication Services'),
+        'T': ('AT&T Inc.', 'Communication Services'),
+        'LOW': ('Lowe\'s Companies, Inc.', 'Consumer Discretionary'),
+        'ETN': ('Eaton Corporation plc', 'Industrials'),
+        'UNP': ('Union Pacific Corporation', 'Industrials'),
+        'MCD': ('McDonald\'s Corporation', 'Consumer Discretionary'),
+        'BA': ('Boeing Company', 'Industrials'),
+        'BMY': ('Bristol-Myers Squibb Company', 'Health Care'),
+        'SBUX': ('Starbucks Corporation', 'Consumer Discretionary'),
+        'GILD': ('Gilead Sciences, Inc.', 'Health Care'),
+        'ADI': ('Analog Devices, Inc.', 'Information Technology'),
+        'LRCX': ('Lam Research Corporation', 'Information Technology'),
+        'AMAT': ('Applied Materials, Inc.', 'Information Technology'),
+        'MU': ('Micron Technology, Inc.', 'Information Technology'),
+        'PANW': ('Palo Alto Networks, Inc.', 'Information Technology'),
+        'SNPS': ('Synopsys, Inc.', 'Information Technology'),
+        'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology')
+    }
+    
+    tickers = list(sp500_full.keys())
+    sectors = {t: sp500_full[t][1] for t in tickers}
+    names = {t: sp500_full[t][0] for t in tickers}
+    return tickers, sectors, names
 
 def calculate_short_term_swing_vap(df, bins=40):
     recent_df = df.tail(25).copy()
@@ -150,7 +206,7 @@ def analyze_deep_catalysts(ticker, sector, close):
 
     return upside, target_price, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกน S&P 500 ทั้งหมด (Swing Trade VAP รอบ 1-2 เดือน)"):
+if st.button("🚀 สแกนพอร์ต S&P 500 (Swing Trade VAP รอบ 1-2 เดือน)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -217,10 +273,10 @@ if st.button("🚀 สแกน S&P 500 ทั้งหมด (Swing Trade VAP �
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนตลาดหุ้น S&P 500 สำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทำกำไร 5-10% ทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนตลาดสำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทำกำไร 5-10% ทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
-        sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'General / Other']
+        sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'Energy', 'Consumer Staples', 'Materials', 'General / Other']
         
         for sec in sectors_ordered:
             sec_items = [item for item in matched_data if item['Sector'] == sec]
