@@ -10,6 +10,7 @@ st.markdown("### เรดาร์สแกนหุ้นนวัตกรร
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
+    # ขยายพูลรายชื่อหุ้นให้ครอบคลุมกลุ่มนวัตกรรม เทคโนโลยี และเฮลท์แคร์มากขึ้น
     sp500_full = {
         'MSFT': ('Microsoft Corporation', 'Information Technology'),
         'AAPL': ('Apple Inc.', 'Information Technology'),
@@ -30,7 +31,17 @@ def get_full_sp500_universe():
         'UBER': ('Uber Technologies, Inc.', 'Industrials'),
         'PANW': ('Palo Alto Networks, Inc.', 'Information Technology'),
         'SNPS': ('Synopsys, Inc.', 'Information Technology'),
-        'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology')
+        'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology'),
+        'TSLA': ('Tesla, Inc.', 'Consumer Discretionary'),
+        'NFLX': ('Netflix, Inc.', 'Communication Services'),
+        'INTC': ('Intel Corporation', 'Information Technology'),
+        'TXN': ('Texas Instruments Incorporated', 'Information Technology'),
+        'AMAT': ('Applied Materials, Inc.', 'Information Technology'),
+        'LRCX': ('Lam Research Corporation', 'Information Technology'),
+        'MU': ('Micron Technology, Inc.', 'Information Technology'),
+        'PYPL': ('PayPal Holdings, Inc.', 'Financials'),
+        'GILD': ('Gilead Sciences, Inc.', 'Health Care'),
+        'AMGN': ('Amgen Inc.', 'Health Care')
     }
     tickers = list(sp500_full.keys())
     sectors = {t: sp500_full[t][1] for t in tickers}
@@ -61,11 +72,9 @@ def calculate_rsi(series, period=14):
     return res
 
 def analyze_deep_catalysts(ticker, sector, close, low_min, high_max):
-    # กำหนดเป้าหมายทำกำไร 6% - 9% ตามสูตรเล่นรอบ 1-2 สัปดาห์
     upside = round(float(np.random.uniform(5.5, 9.5)), 1)
     target_price = round(float(close) * (1 + upside / 100.0), 2)
     
-    # คำนวณจุดเข้า (Entry) และจุดขาย (Exit) จากกรอบสะสมจริง
     entry_zone = f"${round(low_min, 2)} - ${round(low_min * 1.02, 2)}"
     take_profit_1 = f"${round(high_max, 2)} (เป้าแรกชิมลาง 5-6%)"
     take_profit_2 = f"${target_price} (เป้าเต็มแม็กซ์ +{upside}%)"
