@@ -5,12 +5,11 @@ import yfinance as yf
 
 st.set_page_config(page_title="S&P 500 Smart Money & Cycle Scanner", layout="wide")
 
-st.title("🚀 S&P 500 Full Universe Swing Radar (Target 5-10% | VAP รอบ 1-2 เดือน)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรมครบทุกตัวใน S&P 500 จูน Volume Profile สั้นกระชับ เกาะรอบทำกำไรไว")
+st.title("🚀 S&P 500 Swing Radar (Flexible Filter | Target 5-10%)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม S&P 500 ปรับแต่งเกณฑ์ยืดหยุ่น หุ้นเข้าเป้าโชว์ครบไม่มีกั๊ก")
 
 @st.cache_data(ttl=86400)
 def get_full_sp500_universe():
-    # ใช้ชุดรายชื่อหุ้น S&P 500 แบบครบถ้วนและอัปเดตจริง ป้องกันปัญหาดึงหน้าวิกิหลุด
     sp500_full = {
         'MSFT': ('Microsoft Corporation', 'Information Technology'),
         'AAPL': ('Apple Inc.', 'Information Technology'),
@@ -58,7 +57,6 @@ def get_full_sp500_universe():
         'BKNG': ('Booking Holdings Inc.', 'Consumer Discretionary'),
         'ISRG': ('Intuitive Surgical, Inc.', 'Health Care'),
         'PFE': ('Pfizer Inc.', 'Health Care'),
-        'IBM': ('International Business Machines', 'Information Technology'),
         'UBER': ('Uber Technologies, Inc.', 'Industrials'),
         'COP': ('ConocoPhillips', 'Energy'),
         'VZ': ('Verizon Communications Inc.', 'Communication Services'),
@@ -79,7 +77,6 @@ def get_full_sp500_universe():
         'SNPS': ('Synopsys, Inc.', 'Information Technology'),
         'CDNS': ('Cadence Design Systems, Inc.', 'Information Technology')
     }
-    
     tickers = list(sp500_full.keys())
     sectors = {t: sp500_full[t][1] for t in tickers}
     names = {t: sp500_full[t][0] for t in tickers}
@@ -87,7 +84,6 @@ def get_full_sp500_universe():
 
 def calculate_short_term_swing_vap(df, bins=40):
     recent_df = df.tail(25).copy()
-    
     global_min = recent_df['Low'].min()
     global_max = recent_df['High'].max()
     
@@ -114,10 +110,8 @@ def calculate_short_term_swing_vap(df, bins=40):
         for b in range(len(vol_profile)):
             b_low = price_bins[b]
             b_high = price_bins[b+1]
-            
             overlap_low = max(low_p, b_low)
             overlap_high = min(high_p, b_high)
-            
             if overlap_low < overlap_high:
                 overlap_ratio = (overlap_high - overlap_low) / (high_p - low_p)
                 vol_profile[b] += standard_vol * overlap_ratio
@@ -206,7 +200,7 @@ def analyze_deep_catalysts(ticker, sector, close):
 
     return upside, target_price, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนพอร์ต S&P 500 (Swing Trade VAP รอบ 1-2 เดือน)"):
+if st.button("🚀 สแกนพอร์ต S&P 500 (เกณฑ์ยืดหยุ่น รอบสั้น 1-2 เดือน)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -234,13 +228,10 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (Swing Trade VAP รอ�
             if pd.isna(latest_rsi) or pd.isna(latest_close):
                 continue
 
-            rsi_match = None
-            if 15 <= latest_rsi <= 38:
-                rsi_match = "Oversold Bounce (โซนย่อลึกเตรียมเด้งสั้น)"
-            elif 40 <= latest_rsi <= 58:
-                rsi_match = "Mid-Trend Setup (โซนสะสมพลังพร้อมเบรก)"
-                
-            if rsi_match is None:
+            # ปรับช่วง RSI ให้กว้างขึ้นเพื่อให้มั่นใจว่าหุ้นไม่หลุดสเปก (ครอบคลุมตั้งแต่โซนย่อถึงกลางเทรนด์)
+            if 20 <= latest_rsi <= 65:
+                rsi_match = "Swing Trade Setup (โซนเฝ้าระวังและสะสมทำกำไร)"
+            else:
                 continue
 
             val, poc, vah = calculate_short_term_swing_vap(df, bins=40)
@@ -273,7 +264,7 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (Swing Trade VAP รอ�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนตลาดสำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทำกำไร 5-10% ทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนตลาดสำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
         sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'Energy', 'Consumer Staples', 'Materials', 'General / Other']
@@ -292,11 +283,11 @@ if st.button("🚀 สแกนพอร์ต S&P 500 (Swing Trade VAP รอ�
                 vah_p = item['VAH']
                 
                 match_status = "✨ พักตัวปกติ"
-                if close_p <= val_p * 1.015:
+                if close_p <= val_p * 1.02:
                     match_status = "🟢 แนวรับ VAL (จุดเข้าสะสมของความเสี่ยงต่ำ)"
-                elif abs(close_p - poc_p) <= poc_p * 0.015:
+                elif abs(close_p - poc_p) <= poc_p * 0.02:
                     match_status = "🟠 เกาะจุดสมดุล POC (รอจังหวะเลือกทาง)"
-                elif close_p >= vah_p * 0.985:
+                elif close_p >= vah_p * 0.98:
                     match_status = "🔵 ชนแนวต้าน VAH (จุดทยอยขายทำกำไร 5-10%)"
                 
                 expander_title = f"📌 {item['Ticker']} ({item['Name']}) | ราคา: ${close_p} | RSI: {item['RSI']} | สถานะ: {match_status} | เป้าหมาย: +{item['Upside']}%"
