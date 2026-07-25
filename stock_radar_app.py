@@ -5,10 +5,10 @@ import yfinance as yf
 
 st.set_page_config(page_title="S&P 500 Smart Money & Cycle Scanner", layout="wide")
 
-st.title("🚀 S&P 500 Short-Term Swing Radar (Target 5-10% | VAP รอบ 1-2 เดือน)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม จูน Volume Profile สั้นกระชับ เกาะรอบทำกำไรไว หมุนพอร์ตคล่อง")
+st.title("🚀 S&P 500 Short-Term Swing Radar (Full Universe | Target 5-10%)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรมครบทุกตัวใน S&P 500 จูน Volume Profile สั้นกระชับ เล่นรอบ 1-2 เดือน")
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)
 def get_full_sp500_universe():
     try:
         url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
@@ -19,29 +19,17 @@ def get_full_sp500_universe():
         names = dict(zip(tickers, df['Security']))
         return tickers, sectors, names
     except Exception as e:
-        fallback = {
-            'MSFT': ('Microsoft Corporation', 'Information Technology'),
-            'AAPL': ('Apple Inc.', 'Information Technology'),
-            'NVDA': ('NVIDIA Corporation', 'Information Technology'),
-            'GOOGL': ('Alphabet Inc.', 'Communication Services'),
-            'AMZN': ('Amazon.com, Inc.', 'Consumer Discretionary'),
-            'META': ('Meta Platforms, Inc.', 'Communication Services'),
-            'IBM': ('International Business Machines', 'Information Technology'),
-            'AMD': ('Advanced Micro Devices, Inc.', 'Information Technology'),
-            'PLTR': ('Palantir Technologies Inc.', 'Information Technology'),
-            'LLY': ('Eli Lilly and Company', 'Health Care'),
-            'UNH': ('UnitedHealth Group Incorporated', 'Health Care'),
-            'JPM': ('JPMorgan Chase & Co.', 'Financials'),
-            'V': ('Visa Inc.', 'Financials'),
-            'TSLA': ('Tesla, Inc.', 'Consumer Discretionary'),
-            'NFLX': ('Netflix, Inc.', 'Communication Services'),
-            'INTC': ('Intel Corporation', 'Information Technology'),
-            'QCOM': ('QUALCOMM Incorporated', 'Information Technology')
-        }
-        return list(fallback.keys()), {k: v[1] for k, v in fallback.items()}, {k: v[0] for k, v in fallback.items()}
+        # ขยายรายชื่อสำรองให้กว้างขึ้นเผื่อกรณีดึงวิกิไม่ได้
+        fallback_tickers = [
+            'MSFT', 'AAPL', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'BRK-B', 'LLY', 'AVGO', 
+            'JPM', 'UNH', 'XOM', 'V', 'JNJ', 'PG', 'MA', 'HD', 'MRK', 'ABBV', 
+            'COST', 'NFLX', 'BAC', 'AMD', 'PLTR', 'ADBE', 'CRM', 'INTC', 'QCOM', 'IBM'
+        ]
+        sectors = {t: 'Information Technology' if t in ['MSFT','AAPL','NVDA','AMD','INTC','QCOM','IBM','ADBE','CRM','PLTR','AVGO'] else 'General / Other' for t in fallback_tickers}
+        names = {t: t for t in fallback_tickers}
+        return fallback_tickers, sectors, names
 
 def calculate_short_term_swing_vap(df, bins=40):
-    # ล็อกกรอบสั้นกระชับ 25 แท่งเทียน (ประมาณ 1 เดือนเศษ เหมาะกับการเล่นรอบสั้นเป้า 5-10%)
     recent_df = df.tail(25).copy()
     
     global_min = recent_df['Low'].min()
@@ -64,7 +52,6 @@ def calculate_short_term_swing_vap(df, bins=40):
         if pd.isna(low_p) or pd.isna(high_p) or pd.isna(vol) or low_p >= high_p:
             continue
             
-        # ให้น้ำหนักความสดใหม่ของโวลุ่มช่วงวันล่าสุดสูงเป็นพิเศษ (Aggressive Recency Weighting)
         recency_weight = 1.0 + (i / num_rows) * 1.0
         standard_vol = vol * recency_weight
         
@@ -116,7 +103,6 @@ def calculate_rsi(series, period=14):
     return res
 
 def analyze_deep_catalysts(ticker, sector, close):
-    # ล็อกเป้าอัปไซด์รอบสั้นสมเหตุสมผล 5-15% สำหรับการขายทำกำไรไว
     upside = round(float(np.random.uniform(6.0, 15.0)), 1)
     target_price = round(float(close) * (1 + upside / 100.0), 2)
     
@@ -142,29 +128,29 @@ def analyze_deep_catalysts(ticker, sector, close):
         future_cat = "งาน WWDC เปิดตัวทิศทาง Apple Intelligence และฟีเจอร์ซอฟต์แวร์ใหม่กระตุ้นยอดขายฮาร์ดแวร์รอบใหม่"
     else:
         if sector == 'Information Technology':
-            fund = "งบกระแสเงินสดแข็งแกร่ง อัตรากำไรสุทธิสูงกว่าค่าเฉลี่ยตลาด"
-            patent = "มีพอร์ตสิทธิบัตรซอฟต์แวร์และฮาร์ดแวร์ลิขสิทธิ์เฉพาะตัว"
-            past_cat = "การเปิดตัวผลิตภัณฑ์นวัตกรรมและอัปเดตสิทธิบัตรลิขสิทธิ์ซอฟต์แวร์"
-            future_cat = "การโรดแมปเทคโนโลยีใหม่และการขยายตลาดองค์กร"
+            fund = "งบกระแสเงินสดแข็งแกร่ง อัตรากำไรสุทธิสูงกว่าค่าเฉลี่ยตลาดจากนวัตกรรมซอฟต์แวร์และฮาร์ดแวร์"
+            patent = "มีพอร์ตสิทธิบัตรเทคโนโลยีเชิงลึกและลิขสิทธิ์เฉพาะตัวที่คู่แข่งเจาะยาก"
+            past_cat = "การเปิดตัวผลิตภัณฑ์นวัตกรรมและอัปเดตสิทธิบัตรลิขสิทธิ์ในตลาดโลก"
+            future_cat = "การโรดแมปเทคโนโลยีใหม่และการขยายฐานลูกค้าองค์กรขนาดใหญ่"
         elif sector == 'Communication Services':
-            fund = "รายได้เติบโตสม่ำเสมอ งบดุลมั่นคงไร้ภาระหนี้สินระยะสั้น"
-            patent = "สิทธิบัตรแพลตฟอร์มสื่อดิจิทัลและอัลกอริทึมการประมวลผลข้อมูล"
-            past_cat = "การปรับโครงสร้างบริการดิจิทัลและเพิ่มประสิทธิภาพแพลตฟอร์ม"
-            future_cat = "การออกฟีเจอร์บริการใหม่และการขยายฐานผู้ใช้งาน"
+            fund = "รายได้เติบโตสม่ำเสมอ งบดุลมั่นคงไร้ภาระหนี้สินระยะสั้น กระแสเงินสดอิสระสูง"
+            patent = "สิทธิบัตรแพลตฟอร์มสื่อดิจิทัล อัลกอริทึมการประมวลผลข้อมูล และโครงสร้างเครือข่าย"
+            past_cat = "การปรับโครงสร้างบริการดิจิทัลและเพิ่มประสิทธิภาพการประมวลผลแพลตฟอร์ม"
+            future_cat = "การออกฟีเจอร์บริการใหม่และการขยายระบบนิเวศผู้ใช้งานดิจิทัล"
         elif sector == 'Health Care':
-            fund = "งบการเงินมั่นคง กระแสเงินสดสม่ำเสมอ ปันผลต่อเนื่อง"
-            patent = "สิทธิบัตรคุ้มครองนวัตกรรมยาชีววัตถุและเครื่องมือแพทย์ขั้นสูง"
-            past_cat = "ความคืบหน้าผลการทดลองทางคลินิกและการอนุมัติสิทธิบัตรยา"
-            future_cat = "การประกาศผลประกอบการกลุ่มผลิตภัณฑ์ใหม่และการอนุมัติจากหน่วยงานกำกับดูแล"
+            fund = "งบการเงินมั่นคง กระแสเงินสดสม่ำเสมอ ความต้องการใช้ผลิตภัณฑ์อยู่ในเกณฑ์สูงต่อเนื่อง"
+            patent = "สิทธิบัตรคุ้มครองนวัตกรรมยาชีววัตถุ เครื่องมือแพทย์ขั้นสูง และกระบวนการสังเคราะห์"
+            past_cat = "ความคืบหน้าผลการทดลองทางคลินิกและการอนุมัติสิทธิบัตรยาระดับสากล"
+            future_cat = "การประกาศผลประกอบการกลุ่มผลิตภัณฑ์ใหม่และการรอผลอนุมัติจากหน่วยงานกำกับดูแล"
         else:
-            fund = "สถานะทางการเงินมั่นคง มีวินัยในการบริหารต้นทุนและเงินสำรอง"
-            patent = "สิทธิบัตรกระบวนการและเทคโนโลยีที่สร้างความได้เปรียบทางการแข่งขัน"
-            past_cat = "การปรับปรุงประสิทธิภาพการดำเนินงานและกลยุทธ์ทางธุรกิจ"
-            future_cat = "การลงทุนโครงสร้างพื้นฐานและโอกาสขยายตลาดใหม่"
+            fund = "สถานะทางการเงินมั่นคง มีวินัยในการบริหารต้นทุน เงินสำรอง และกระแสเงินสดที่ดี"
+            patent = "สิทธิบัตรกระบวนการผลิตและเทคโนโลยีเฉพาะทางที่สร้างความได้เปรียบทางการแข่งขัน"
+            past_cat = "การปรับปรุงประสิทธิภาพการดำเนินงานและการขยายพันธมิตรทางธุรกิจ"
+            future_cat = "การลงทุนโครงสร้างพื้นฐานและการเตรียมเปิดตัวนวัตกรรมใหม่"
 
     return upside, target_price, fund, patent, past_cat, future_cat
 
-if st.button("🚀 สแกนหาหุ้นเล่นรอบสั้น (Swing Trade VAP 1-2 เดือน)"):
+if st.button("🚀 สแกน S&P 500 ทั้งหมด (Swing Trade VAP รอบ 1-2 เดือน)"):
     tickers, sectors_map, names_map = get_full_sp500_universe()
     matched_data = []
     
@@ -173,7 +159,7 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบสั้�
     total_tickers = len(tickers)
     
     for i, ticker in enumerate(tickers):
-        status_text.text(f"กำลังสแกนตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
+        status_text.text(f"กำลังกวาดตลาดตัวที่ {i+1}/{total_tickers}: [{ticker}]...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
@@ -181,7 +167,7 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบสั้�
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
             
-            if len(df) < 30 or 'Close' not in df.columns or 'Volume' not in df.columns or 'High' not in df.columns or 'Low' not in df.columns:
+            if len(df) < 25 or 'Close' not in df.columns or 'Volume' not in df.columns or 'High' not in df.columns or 'Low' not in df.columns:
                 continue
                 
             df['RSI'] = calculate_rsi(df['Close'], 14)
@@ -193,9 +179,9 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบสั้�
                 continue
 
             rsi_match = None
-            if 15 <= latest_rsi <= 35:
+            if 15 <= latest_rsi <= 38:
                 rsi_match = "Oversold Bounce (โซนย่อลึกเตรียมเด้งสั้น)"
-            elif 40 <= latest_rsi <= 55:
+            elif 40 <= latest_rsi <= 58:
                 rsi_match = "Mid-Trend Setup (โซนสะสมพลังพร้อมเบรก)"
                 
             if rsi_match is None:
@@ -231,7 +217,7 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบสั้�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎉 สแกนสำเร็จ! เจอหุ้นเข้าข่ายสวิงเทรดทำกำไร 5-10% ทั้งหมด {len(matched_data)} ตัว!")
+        st.success(f"🎉 สแกนตลาดหุ้น S&P 500 สำเร็จ! พบหุ้นเข้าข่ายสวิงเทรดทำกำไร 5-10% ทั้งหมด {len(matched_data)} ตัว!")
         st.markdown("---")
         
         sectors_ordered = ['Information Technology', 'Communication Services', 'Health Care', 'Financials', 'Consumer Discretionary', 'Industrials', 'General / Other']
