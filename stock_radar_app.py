@@ -41,20 +41,16 @@ def get_full_sp500_universe():
         return list(fallback.keys()), {k: v[1] for k, v in fallback.items()}, {k: v[0] for k, v in fallback.items()}
 
 def calculate_volume_profile_for_cycle(df, bins=50):
-    # ล็อกกรอบเวลา 42 แท่งล่าสุด (เทียบเท่ารอบการเทรดประมาณ 2 เดือน)
     recent_df = df.tail(42).copy() 
     price_min = recent_df['Low'].min()
     price_max = recent_df['High'].max()
     price_range = np.linspace(price_min, price_max, bins)
     vol_profile = np.zeros(bins - 1)
     
-    # ถ่วงน้ำหนักแท่งล่าสุดให้เข้มข้นขึ้นสำหรับสายเล่นรอบสั้น
     num_rows = len(recent_df)
     for i in range(num_rows):
         p = recent_df['Close'].iloc[i]
         v = recent_df['Volume'].iloc[i]
-        
-        # น้ำหนักพิเศษเพิ่มขึ้นตามความสดใหม่ของแท่งเทียน (Recency Weighting)
         recency_weight = 1.0 + (i / num_rows) * 0.5 
         adjusted_vol = v * recency_weight
         
