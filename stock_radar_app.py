@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Smart Money Multi-Timeframe Radar (Global & SET100)", layout="wide")
 
 st.title("🚀 Smart Money Multi-Timeframe Radar (Global & SET100)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | เพิ่ม Volume Change @ ราคาซื้อขายหนาแน่นสุด (POC) ทุกกรอบเวลา")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | ปรับ % Volume Change เป็นแบบ Dynamic Baseline เทียบกับค่าเฉลี่ยช่วงเวลาก่อนหน้าแม่นยำขึ้น")
 
 @st.cache_data(ttl=86400)
 def get_extended_universe():
@@ -90,7 +90,8 @@ def get_extended_universe():
 
 def calculate_timeframe_metrics(df):
     """
-    คำนวณกรอบเวลาพร้อมหา 'ราคาที่มีการซื้อขายกันหนาแน่นสุด (POC)' และ Volume Change ในจุดนั้น
+    คำนวณ % Volume Change แบบ Dynamic Baseline 
+    โดยเทียบวอลุ่มช่วงเวลานั้นๆ กับค่าเฉลี่ยช่วงเวลาก่อนหน้าที่ต่อกันโดยตรง
     """
     timeframes = {
         'เมื่อวันก่อน': 1,
@@ -102,7 +103,6 @@ def calculate_timeframe_metrics(df):
     }
     results = {}
     current_close = df['Close'].iloc[-1]
-    baseline_vol = df['Volume'].rolling(window=20).mean().iloc[-1]
     
     for label, days in timeframes.items():
         if len(df) >= days:
@@ -118,18 +118,29 @@ def calculate_timeframe_metrics(df):
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
         
-        # คำนวณ Volume Change รวมของช่วงเวลานั้น
+        # คำนวณ Point of Control (POC) หรือราคาที่มีการซื้อขายหนาแน่นสุดในช่วงเวลานั้น
+        # แบ่งช่วงราคาเป็น bins แล้วหาว่าราคาไหนมี Volume รวมสูงสุด
+        try:
+            hist_sub = sub_df.copy()
+            hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
+            poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
+            poc_price = round(float(poc_row.mid), 2) if pd.notna(poc_row) else round(current_close, 2)
+        except:
+            poc_price = round(current_close, 2)
+
+        # Dynamic Baseline: เทียบวอลุ่มเฉลี่ยของช่วงนี้ กับค่าเฉลี่ยช่วงก่อนหน้า (Historical Baseline)
         avg_sub_vol = sub_df['Volume'].mean()
-        vol_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
         
-        # หาแท่ง/ราคาที่มีการซื้อขายกันมากที่สุด (Point of Control - POC) ในกรอบเวลานี้
-        # โดยอิงจากราคา Close ที่มี Volume สูงสุดในย่านนั้น หรือเฉลี่ย High-Low ที่มีวอลุ่มสะสมหนาแน่น
-        max_vol_idx = sub_df['Volume'].idxmax()
-        poc_price = round(sub_df.loc[max_vol_idx, 'Close'], 2)
-        poc_vol = sub_df.loc[max_vol_idx, 'Volume']
+        # สร้างช่วงเทียบแบบไดนามิกย้อนหลังไปอีกเท่าตัว
+        baseline_start_idx = max(0, len(df) - (days * 2))
+        baseline_end_idx = max(0, len(df) - days)
         
-        # คำนวณ % Volume Change เฉพาะที่ราคานี้เทียบกับค่าเฉลี่ยปกติ
-        poc_vol_change = round(((poc_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
+        if baseline_end_idx > baseline_start_idx:
+            historical_baseline_vol = df['Volume'].iloc[baseline_start_idx:baseline_end_idx].mean()
+        else:
+            historical_baseline_vol = df['Volume'].mean()
+            
+        vol_change_pct = round(((avg_sub_vol - historical_baseline_vol) / historical_baseline_vol) * 100, 1) if historical_baseline_vol > 0 else 0.0
         
         results[label] = {
             'start_date': start_date,
@@ -138,9 +149,8 @@ def calculate_timeframe_metrics(df):
             'high_pct': high_pct,
             'low_pct': low_pct,
             'range_pct': total_range_pct,
-            'vol_change_pct': vol_change_pct,
             'poc_price': poc_price,
-            'poc_vol_change': poc_vol_change
+            'vol_change_pct': vol_change_pct
         }
         
     rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
@@ -195,7 +205,7 @@ target_universe = sp500_dict if "S&P" in market_choice else set100_dict
 all_sectors = sorted(list(set([v[1] for v in target_universe.values()])))
 selected_sectors = st.sidebar.multiselect("📂 กรองตาม Sector", all_sectors, default=all_sectors)
 
-if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (เพิ่ม POC & Volume Change แบบจัดเต็ม)"):
+if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (Dynamic Volume Baseline)"):
     matched_data = []
     
     progress_bar = st.progress(0)
@@ -280,7 +290,7 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                     st.markdown(f"🔮 **Catalyst สำคัญใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
                     st.markdown("---")
                     
-                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, % Volume Change และจุดราคาซื้อขายหนาแน่นสุด (POC)")
+                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, POC (จุดซื้อขายหนาแน่น) และ % Volume Change แบบ Dynamic Baseline")
                     tf_rows = []
                     for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                         if tf_name in item['TF_Data']:
@@ -291,9 +301,8 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                                 'ราคาสูงสุด (High)': f"{curr_symbol}{info['high']} ({info['high_pct']:+.1f}%)",
                                 'ราคาต่ำสุด (Low)': f"{curr_symbol}{info['low']} ({info['low_pct']:+.1f}%)",
                                 'ความกว้างกรอบ': f"{info['range_pct']}%",
-                                'POC (ราคาซื้อขายหนาแน่นสุด)': f"{curr_symbol}{info['poc_price']}",
-                                '% Vol Change @ POC': f"{info['poc_vol_change']:+.1f}%",
-                                '% Vol Change (รวม)': f"{info['vol_change_pct']:+.1f}%"
+                                'POC (ราคาหนาแน่นสุด)': f"{curr_symbol}{info['poc_price']}",
+                                '% Vol Change (Dynamic)': f"{info['vol_change_pct']:+.1f}%"
                             })
                     st.table(pd.DataFrame(tf_rows))
                     
