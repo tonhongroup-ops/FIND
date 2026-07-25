@@ -10,6 +10,7 @@ st.markdown("### เรดาร์สแกนหุ้นนวัตกรร
 
 @st.cache_data(ttl=86400)
 def get_sector_categorized_universe():
+    # จัดหมวดหมู่หุ้นนวัตกรรมและสิทธิบัตรเข้มข้น แยกตาม Sector อย่างเป็นระบบ
     sectors_data = {
         "🧬 Health Care & Medical Innovation (สิทธิบัตรการแพทย์/ยา)": {
             'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึกและเครื่องมือใช้แล้วทิ้งเติบโตสูง)',
@@ -169,7 +170,7 @@ if st.button(f"🚀 เริ่มสแกน Sector: {selected_sector_tab}"):
                 col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
                 
                 st.markdown("---")
-                st.markdown(f"🔬 **เจาะลึกสิทธิบัตร & นวัตกรรม (IP Asset):** **{item['Patent']}**")
+                st.markdown(f"🔬 **สตอรี่สิทธิบัตร & ข่าวดีเชิงลึก (IP & Catalyst):** **{item['Patent']}**")
                 st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
                 st.markdown(f"🎯 **จุดขายทำกำไร:** 🔴 **${item['TP1']} (เป้าแรก 5%)** | 🚀 **${item['Target']} (+{item['Upside']}%)**")
                 
