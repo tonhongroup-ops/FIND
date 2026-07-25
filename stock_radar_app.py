@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Deep S&P 500 Innovation & Moat Radar (Sectorized)", layout="wide")
+st.set_page_config(page_title="Deep S&P 500 Innovation & Moat Radar (Strict Filter)", layout="wide")
 
-st.title("🚀 Deep S&P 500 Innovation & Moat Radar (Sectorized)")
-st.markdown("### เรดาร์สแกนหุ้นพื้นฐานแกร่ง Moat แน่น มีสิทธิบัตร/Ecosystem ชัดเจน | แยก Sector ครบจบในหน้าเดียว")
+st.title("🚀 Deep S&P 500 Innovation & Moat Radar (Strict Filter)")
+st.markdown("### เรดาร์สแกนหุ้นพื้นฐานแกร่ง Moat แน่น | กรองความเข้มข้นทางเทคนิคและเล่นรอบแบบสมจริง")
 
 @st.cache_data(ttl=86400)
 def get_extended_market_universe():
@@ -169,14 +169,14 @@ def calculate_rsi(series, period=14):
 
 extended_universe = get_extended_market_universe()
 
-st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนราย Sector")
-selected_sector = st.sidebar.selectbox("📂 เลือก Sector ที่ต้องการโฟกัส", list(extended_universe.keys()))
-strategy_mode = st.sidebar.selectbox("⚙️ เลือกเงื่อนไขกลยุทธ์", [
-    "1. โหมดซุ่มสะสม (กรอบแคบ <= 15% + วอลุ่มแห้ง)", 
-    "2. โหมดจะระเบิดราคา (สะบัดไส้เทียนกว้าง >= 8% + วอลุ่มเริ่มกระดิก)"
+st.sidebar.markdown("### ⚙️ ตั้งค่าตัวกรองความเข้มข้น")
+selected_sector = st.sidebar.selectbox("📂 เลือก Sector ที่ต้องการเจาะลึก", list(extended_universe.keys()))
+strategy_mode = st.sidebar.selectbox("⚙️ เลือกเงื่อนไขกลยุทธ์เชิงลึก", [
+    "1. โหมดซุ่มสะสมเข้มข้น (กรอบ 1M แคบ <= 10% + RSI ไม่ออกนอกกรอบ + วอลุ่มแห้งสนิท)", 
+    "2. โหมดสัญญาณเบรกเอาท์/ระเบิดราคา (สะบัดไส้เทียน >= 6% + วอลุ่มพุ่งทะลักเทียบค่าเฉลี่ย)"
 ])
 
-if st.button(f"🚀 สแกนเฉพาะ Sector: {selected_sector.split(' ')[1]}"):
+if st.button(f"🚀 สแกนคัดกรอง Sector: {selected_sector.split(' ')[1]}"):
     target_tickers = extended_universe[selected_sector]
     matched_data = []
     
@@ -185,7 +185,7 @@ if st.button(f"🚀 สแกนเฉพาะ Sector: {selected_sector.split('
     total_tickers = len(target_tickers)
     
     for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังสแกน [{ticker}] ({i+1}/{total_tickers})...")
+        status_text.text(f"กำลังคัดกรอง [{ticker}] ({i+1}/{total_tickers})...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
@@ -217,12 +217,14 @@ if st.button(f"🚀 สแกนเฉพาะ Sector: {selected_sector.split('
             last_vol_ma = recent['Vol_MA'].iloc[-1]
             
             is_matched = False
-            if "โหมดซุ่มสะสม" in strategy_mode:
-                if range_pct <= 0.15 and latest_rsi <= 65 and last_vol <= (last_vol_ma * 1.3):
+            if "โหมดซุ่มสะสมเข้มข้น" in strategy_mode:
+                # เพิ่มความเข้มข้น: กรอบราคาต้องแคบจริง ๆ (<= 10%) และ RSI อยู่ในโซนกลางๆ ไม่ overbought
+                if range_pct <= 0.10 and 40 <= latest_rsi <= 60 and last_vol <= last_vol_ma:
                     is_matched = True
             else:
-                vol_1w_change = recent['Volume'].tail(5).mean() / recent['Volume'].iloc[-15:-5].mean() if len(recent) >= 15 else 1.0
-                if range_pct >= 0.08 and latest_rsi <= 72 and vol_1w_change >= 0.9:
+                # โหมดเบรกเอาท์: ต้องมีการสวิงตัวและวอลุ่มมากกว่าค่าเฉลี่ย 1.2 เท่าอย่างน้อย
+                vol_spike = last_vol >= (last_vol_ma * 1.2)
+                if range_pct >= 0.06 and latest_rsi >= 50 and vol_spike:
                     is_matched = True
 
             if is_matched:
@@ -244,9 +246,9 @@ if st.button(f"🚀 สแกนเฉพาะ Sector: {selected_sector.split('
     status_text.empty()
     progress_bar.empty()
 
-    st.markdown(f"## 📂 ผลการสแกนใน Sector: **{selected_sector}**")
+    st.markdown(f"## 📂 ผลการคัดกรองเข้มข้นใน Sector: **{selected_sector}**")
     if matched_data:
-        st.success(f"🎉 คัดหุ้นเข้าเงื่อนไขในกลุ่มนี้ทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 กรองหุ้นที่ผ่านเกณฑ์เข้มงวดจริง ๆ ได้ทั้งหมด **{len(matched_data)} ตัว** (จากทั้งหมดในกลุ่ม)")
         st.markdown("---")
         
         for item in matched_data:
@@ -280,4 +282,4 @@ if st.button(f"🚀 สแกนเฉพาะ Sector: {selected_sector.split('
                 st.table(pd.DataFrame(tf_rows))
         st.markdown("---")
     else:
-        st.warning(f"ใน Sector นี้ รอบนี้ยังไม่มีตัวไหนเข้าเงื่อนไข '{strategy_mode}' ลองสลับไปเลือกดู Sector อื่นดูเพื่อน!")
+        st.warning(f"รอบนี้ไม่มีหุ้นตัวไหนใน Sector นี้ผ่านเกณฑ์ 'กรองเข้มข้น' นี้เลย แสดงว่าตลาดยังไม่เข้าทรง ลองเปลี่ยนโหมดหรือดู Sector อื่นดูเพื่อน!")
