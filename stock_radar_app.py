@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Smart Money Multi-Timeframe Radar (Global & SET100)", layout="wide")
 
 st.title("🚀 Smart Money Multi-Timeframe Radar (Global & SET100)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | เพิ่มค่าเฉลี่ย RSI 2 เดือน และ % Volume Change ย้อนหลังทุกไทม์เฟรม (1M, 2W, 1W, 3D)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & หุ้นไทย | เพิ่มไทม์เฟรมครบถ้วนถึง 2 เดือน, RSI เฉลี่ย, และ % Volume Change จัดเต็ม")
 
 @st.cache_data(ttl=86400)
 def get_extended_universe():
@@ -90,19 +90,20 @@ def get_extended_universe():
 
 def calculate_timeframe_metrics(df):
     """
-    คำนวณกรอบราคา %± และ % Volume Change ในแต่ละช่วงเวลา
-    เรียงลำดับ: 1 เดือน (~20 แท่ง), 2 อาทิตย์ (~10 แท่ง), 1 อาทิตย์ (~5 แท่ง), 3 วัน (~3 แท่ง)
-    พร้อมคำนวณค่าเฉลี่ย RSI 2 เดือน (~40 แท่ง)
+    เพิ่มไทม์เฟรม 2 เดือน (~40 แท่ง) เข้ามาในตารางเปรียบเทียบ
+    เรียงลำดับ: เมื่อวันก่อน, 3 วัน, 1 อาทิตย์, 2 อาทิตย์, 1 เดือน, 2 เดือน
     """
     timeframes = {
-        '1 เดือน': 20, 
-        '2 อาทิตย์': 10, 
+        'เมื่อวันก่อน': 1,
+        '3 วัน': 3,
         '1 อาทิตย์': 5, 
-        '3 วัน': 3
+        '2 อาทิตย์': 10, 
+        '1 เดือน': 20,
+        '2 เดือน': 40
     }
     results = {}
     current_close = df['Close'].iloc[-1]
-    baseline_vol = df['Volume'].rolling(window=20).mean().iloc[-1] # เทียบกับค่าเฉลี่ย 20 วัน
+    baseline_vol = df['Volume'].rolling(window=20).mean().iloc[-1]
     
     for label, days in timeframes.items():
         if len(df) >= days:
@@ -118,7 +119,6 @@ def calculate_timeframe_metrics(df):
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
         
-        # คำนวณ % Volume Change เทียบกับค่าเฉลี่ยปกติ
         avg_sub_vol = sub_df['Volume'].mean()
         vol_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
         
@@ -132,7 +132,6 @@ def calculate_timeframe_metrics(df):
             'vol_change_pct': vol_change_pct
         }
         
-    # คำนวณค่าเฉลี่ย RSI ย้อนหลัง 2 เดือน (ประมาณ 40 แท่ง)
     rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
     
     return results, rsi_2m_avg
@@ -185,7 +184,7 @@ target_universe = sp500_dict if "S&P" in market_choice else set100_dict
 all_sectors = sorted(list(set([v[1] for v in target_universe.values()])))
 selected_sectors = st.sidebar.multiselect("📂 กรองตาม Sector", all_sectors, default=all_sectors)
 
-if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (พร้อม RSI เฉลี่ย 2 เดือน & % Vol Change)"):
+if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} (เพิ่มกรอบ 2 เดือนครบสูตร)"):
     matched_data = []
     
     progress_bar = st.progress(0)
@@ -270,14 +269,14 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                     st.markdown(f"🔮 **Catalyst สำคัญใน 3 เดือนข้างหน้า:** 🚀 **{item['Catalyst_3M']}**")
                     st.markdown("---")
                     
-                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและ % Volume Change (เรียงลำดับ: 1M ➔ 2W ➔ 1W ➔ 3D)")
+                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคาและ % Volume Change (เรียงจาก: เมื่อวันก่อน ➔ 3 วัน ➔ 1 อาทิตย์ ➔ 2 อาทิตย์ ➔ 1 เดือน ➔ 2 เดือน)")
                     tf_rows = []
-                    for tf_name in ['1 เดือน', '2 อาทิตย์', '1 อาทิตย์', '3 วัน']:
+                    for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                         if tf_name in item['TF_Data']:
                             info = item['TF_Data'][tf_name]
                             tf_rows.append({
                                 'ช่วงเวลา': tf_name,
-                                'เริ่มสะสมตั้งแต่': info['start_date'],
+                                'วันที่อ้างอิง': info['start_date'],
                                 'ราคาสูงสุด (High)': f"{curr_symbol}{info['high']} ({info['high_pct']:+.1f}%)",
                                 'ราคาต่ำสุด (Low)': f"{curr_symbol}{info['low']} ({info['low_pct']:+.1f}%)",
                                 'ความกว้างกรอบ': f"{info['range_pct']}%",
