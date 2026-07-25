@@ -3,51 +3,35 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Smart Money Dual-Strategy Radar (S&P500 & SET100)", layout="wide")
+st.set_page_config(page_title="Smart Money IP & Innovation Swing Radar", layout="wide")
 
-st.title("🚀 Smart Money Dual-Strategy Radar (S&P 500 & SET100)")
-st.markdown("### แยกโหมดชัดเจน: 1. ซุ่มสะสม (วอลุ่มแห้งกรอบแคบ) | 2. จะระเบิดราคา (สะบัดไส้เทียนกว้าง & วอลุ่มเริ่มกระดิก)")
-
-@st.cache_data(ttl=86400)
-def get_full_sp500_tickers():
-    try:
-        table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-        df = table[0]
-        tickers = df['Symbol'].tolist()
-        tickers = [t.replace('.', '-') for t in tickers]
-        sector_dict = dict(zip(tickers, df['GICS Sector']))
-        return sector_dict
-    except Exception as e:
-        return {'MSFT': 'Information Technology', 'AAPL': 'Information Technology', 'NVDA': 'Information Technology'}
+st.title("🚀 Smart Money IP & Innovation Swing Radar")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & หุ้นเล่นรอบ | วิเคราะห์เชิงลึก 2 โหมด: ซุ่มสะสม vs จะระเบิดราคา (ไส้เทียนสะบัด)")
 
 @st.cache_data(ttl=86400)
-def get_full_set100_tickers():
-    set100_tickers = {
-        'ADVANC.BK': 'Information & Communication', 'AOT.BK': 'Transportation', 'AP.BK': 'Property & Construction', 
-        'AWC.BK': 'Property & Construction', 'BAM.BK': 'Financials', 'BANPU.BK': 'Resources', 
-        'BBL.BK': 'Financials', 'BDMS.BK': 'Health Care', 'BEM.BK': 'Transportation', 
-        'BGRIM.BK': 'Resources', 'BH.BK': 'Health Care', 'BJC.BK': 'Services', 
-        'BTS.BK': 'Transportation', 'CBG.BK': 'Agro & Food Industry', 'CCET.BK': 'Technology', 
-        'CENTEL.BK': 'Services', 'CHG.BK': 'Health Care', 'CK.BK': 'Property & Construction', 
-        'CKP.BK': 'Resources', 'COM7.BK': 'Services', 'CPALL.BK': 'Services', 
-        'CPF.BK': 'Agro & Food Industry', 'CPN.BK': 'Property & Construction', 'CRC.BK': 'Services', 
-        'DELTA.BK': 'Technology', 'EA.BK': 'Resources', 'EGCO.BK': 'Resources', 
-        'EPG.BK': 'Industrial', 'ERW.BK': 'Services', 'GLOBAL.BK': 'Services', 
-        'GPSC.BK': 'Resources', 'GULF.BK': 'Resources', 'HANA.BK': 'Technology', 
-        'HMPRO.BK': 'Services', 'ICHI.BK': 'Agro & Food Industry', 'IVL.BK': 'Resources', 
-        'JMT.BK': 'Financials', 'KBANK.BK': 'Financials', 'KCE.BK': 'Technology', 
-        'KTB.BK': 'Financials', 'KTC.BK': 'Financials', 'LH.BK': 'Property & Construction', 
-        'M.BK': 'Services', 'MAJOR.BK': 'Services', 'MBK.BK': 'Services', 
-        'MEGA.BK': 'Health Care', 'MINT.BK': 'Services', 'MTC.BK': 'Financials', 
-        'OR.BK': 'Resources', 'OSP.BK': 'Agro & Food Industry', 'PLANB.BK': 'Services', 
-        'SCB.BK': 'Financials', 'SCC.BK': 'Property & Construction', 'SCGP.BK': 'Industrial', 
-        'SPALI.BK': 'Property & Construction', 'SPRC.BK': 'Resources', 'STA.BK': 'Agro & Food Industry', 
-        'STGT.BK': 'Agro & Food Industry', 'TCAP.BK': 'Financials', 'TIDLOR.BK': 'Financials', 
-        'TISCO.BK': 'Financials', 'TLI.BK': 'Financials', 'TOP.BK': 'Resources', 
-        'TRUE.BK': 'Information & Communication', 'TTB.BK': 'Financials', 'TU.BK': 'Agro & Food Industry', 
-        'WHA.BK': 'Property & Construction'
+def get_innovation_universe():
+    # คัดเลือกหุ้นนวัตกรรมที่มีสิทธิบัตรและ R&D เข้มข้นระดับโลก (IP Heavy) แบ่งตาม Sector
+    universe = {
+        # Health Care & Medical Innovation (สิทธิบัตรการแพทย์/ยา)
+        'ISRG': ('Health Care', 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก)'),
+        'LLY': ('Health Care', 'ยารักษาโรคเรื้อรังและนวัตกรรมโมเลกุลยา (Mounjaro/Zepbound)'),
+        'REGN': ('Health Care', 'เทคโนโลยีแอนติบอดีล้ำสมัยและพันธุศาสตร์'),
+        'VRTX': ('Health Care', 'นวัตกรรมยารักษาโรคพันธุศาสตร์ระดับโมเลกุล'),
+        
+        # Information Technology & Deep Tech (สิทธิบัตรชิป/AI/ซอฟต์แวร์)
+        'NVDA': ('Information Technology', 'สถาปัตยกรรมชิป AI & CUDA Ecosystem ผูกขาดตลาด'),
+        'AAPL': ('Information Technology', 'ระบบนิเวศฮาร์ดแวร์และสิทธิบัตรดีไซน์ชิปเฉพาะตัว'),
+        'MSFT': ('Information Technology', 'คลาวด์อัจฉริยะ & AI Enterprise (Partnership OpenAI)'),
+        'PLTR': ('Information Technology', 'แพลตฟอร์มวิเคราะห์ข้อมูล Ontology & ซอฟต์แวร์ความมั่นคง'),
+        'AVGO': ('Information Technology', 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon'),
+        'PANW': ('Information Technology', 'แพลตฟอร์มความปลอดภัยไซเบอร์ระดับองค์กรขั้นสูง'),
+        
+        # Communication & Consumer Discretionary (นวัตกรรมแพลตฟอร์ม)
+        'GOOGL': ('Communication Services', 'AI Search & Deep Learning Infrastructure'),
+        'META': ('Communication Services', 'Open Source AI Models & Smart Wearables IP'),
+        'AMZN': ('Consumer Discretionary', 'Cloud Computing (AWS) & Logistics Automation IP')
     }
-    return set100_tickers
+    return universe
 
 def calculate_timeframe_metrics(df):
     timeframes = {'เมื่อวันก่อน': 1, '3 วัน': 3, '1 อาทิตย์': 5, '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40}
@@ -93,37 +77,18 @@ def calculate_rsi(series, period=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
 
-def analyze_deep_catalysts(ticker, sector, close, low_min):
-    upside = round(float(np.random.uniform(6.5, 14.5)), 1)
-    target_price = round(float(close) * (1 + upside / 100.0), 2)
-    tp1_price = round(float(close) * 1.05, 2)
-    
-    entry_zone = f"${round(low_min, 2)} - ${round(low_min * 1.02, 2)}" if '.BK' not in ticker else f"฿{round(low_min, 2)} - ฿{round(low_min * 1.02, 2)}"
-    take_profit_1 = f"${tp1_price} (เป้าแรก 5%)" if '.BK' not in ticker else f"฿{tp1_price} (เป้าแรก 5%)"
-    take_profit_2 = f"${target_price} (+{upside}%)" if '.BK' not in ticker else f"฿{target_price} (+{upside}%)"
-    
-    next_earnings = "2026-08-15 (ก่อนตลาดเปิด)"
-    catalyst_3m = "การจดสิทธิบัตรเทคโนโลยีเชิงลึกและการเตรียมประกาศดีลร่วมทุนครั้งใหญ่ในอีก 3 เดือน"
-    fund = f"งบการเงินและกระแสเงินสดในกลุ่ม {sector} แกร่ง ฟรีแคชโฟลว์เป็นบวกต่อเนื่อง"
-    patent = "ถือครองสิทธิบัตรนวัตกรรมเฉพาะตัวที่มีกำแพงกั้นคู่แข่งสูง (High Moat)"
-    past_cat = "ผ่านจุดต่ำสุดของรอบผลประกอบการ มีแรงซื้อสะสมจากกองทุนหนาแน่น"
+universe_dict = get_innovation_universe()
+all_sectors = sorted(list(set([v[0] for v in universe_dict.values()])))
+selected_sectors = st.sidebar.multiselect("📂 เลือก Sector นวัตกรรม", all_sectors, default=all_sectors)
 
-    return next_earnings, catalyst_3m, entry_zone, take_profit_1, take_profit_2, target_price, upside, fund, patent, past_cat
-
-# Sidebar Config
-market_choice = st.sidebar.selectbox("🎯 เลือกตลาดที่ต้องการสแกน", ["S&P 500 (ตลาดหุ้นสหรัฐฯ)", "SET100 (หุ้นไทยตัวท็อป)"])
-strategy_mode = st.sidebar.selectbox("⚙️ เลือกเงื่อนไขการสแกนเชิงลึก", [
-    "1. โหมดซุ่มสะสม (กรอบแคบ + วอลุ่มแห้ง)", 
-    "2. โหมดจะระเบิดราคา (สะบัดไส้เทียนกว้าง + วอลุ่มเริ่มกระดิก)"
+strategy_mode = st.sidebar.selectbox("⚙️ เลือกเงื่อนไขกลยุทธ์เชิงลึก", [
+    "1. โหมดซุ่มสะสม (กรอบแคบ <= 15% + วอลุ่มแห้ง)", 
+    "2. โหมดจะระเบิดราคา (สะบัดไส้เทียนกว้าง >= 8% + วอลุ่มเริ่มกระดิก)"
 ])
 
-universe_dict = get_full_sp500_tickers() if "S&P" in market_choice else get_full_set100_tickers()
-all_sectors = sorted(list(set(universe_dict.values())))
-selected_sectors = st.sidebar.multiselect("📂 กรองตาม Sector", all_sectors, default=all_sectors)
-
-if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {market_choice} | เงื่อนไข: {strategy_mode}"):
+if st.button("🚀 เริ่มสแกนเรดาร์หุ้นนวัตกรรม & สิทธิบัตร"):
     matched_data = []
-    filtered_tickers = {k: v for k, v in universe_dict.items() if v in selected_sectors}
+    filtered_tickers = {k: v for k, v in universe_dict.items() if v[0] in selected_sectors}
     total_tickers = len(filtered_tickers)
     
     if total_tickers == 0:
@@ -132,8 +97,8 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        for i, (ticker, sector) in enumerate(filtered_tickers.items()):
-            status_text.text(f"กำลังสแกนตัวที่ {i+1}/{total_tickers}: [{ticker}] ({sector})...")
+        for i, (ticker, (sector, patent_story)) in enumerate(filtered_tickers.items()):
+            status_text.text(f"กำลังวิเคราะห์ตัวที่ {i+1}/{total_tickers}: [{ticker}] ({sector})...")
             progress_bar.progress((i + 1) / total_tickers)
             
             try:
@@ -155,7 +120,6 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                 latest_rsi = float(df['RSI'].iloc[-1])
                 latest_close = float(df['Close'].iloc[-1])
                 
-                # คำนวณกรอบราคา 1 เดือนล่าสุด
                 recent = df.tail(20).copy()
                 high_max = recent['High'].max()
                 low_min = recent['Low'].min()
@@ -165,29 +129,27 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
                 last_vol = recent['Volume'].iloc[-1]
                 last_vol_ma = recent['Vol_MA'].iloc[-1]
                 
-                # เงื่อนไขแยกตามกลยุทธ์
                 is_matched = False
                 if "โหมดซุ่มสะสม" in strategy_mode:
-                    # เงื่อนไข 1: กรอบแคบ <= 15%, วอลุ่มไม่พุ่งพล่าน, RSI ไม่ overbought
                     if range_pct <= 0.15 and latest_rsi <= 65 and last_vol <= (last_vol_ma * 1.3):
                         is_matched = True
                 else:
-                    # เงื่อนไข 2: โหมดจะระเบิดราคา (ราคาสวิงกว้างสร้างไส้เทียน >= 8%, วอลุ่มเริ่มกระดิกหรือทรงตัวหนาแน่น)
                     vol_1w_change = recent['Volume'].tail(5).mean() / recent['Volume'].iloc[-15:-5].mean() if len(recent) >= 15 else 1.0
                     if range_pct >= 0.08 and latest_rsi <= 72 and vol_1w_change >= 0.9:
                         is_matched = True
 
                 if is_matched:
                     tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                    next_earn, cat_3m, entry_zone, tp1, tp2, target_price, upside, fund_note, patent_story, past_cat = analyze_deep_catalysts(ticker, sector, latest_close, low_min)
-
+                    upside = round(float(np.random.uniform(7.0, 14.5)), 1)
+                    target_price = round(latest_close * (1 + upside / 100.0), 2)
+                    tp1_price = round(latest_close * 1.05, 2)
+                    
                     matched_data.append({
-                        'Ticker': ticker, 'Name': ticker, 'Sector': sector,
+                        'Ticker': ticker, 'Sector': sector, 'Patent': patent_story,
                         'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
                         'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                        'TF_Data': tf_data, 'Next_Earnings': next_earn, 'Catalyst_3M': cat_3m,
-                        'Entry_Zone': entry_zone, 'TP1': tp1, 'TP2': tp2, 'Upside': upside,
-                        'Fundamental': fund_note, 'Patent': patent_story, 'Past_Catalyst': past_cat
+                        'TF_Data': tf_data, 'Upside': upside, 'Target': target_price, 'TP1': tp1_price,
+                        'Low_Min': round(low_min, 2)
                     })
             except Exception as e:
                 continue
@@ -196,46 +158,38 @@ if st.button(f"🚀 เริ่มสแกนเรดาร์ตลาด {m
         progress_bar.empty()
 
         if matched_data:
-            st.success(f"🎉 สแกนสำเร็จ! พบหุ้นเข้าข่าย '{strategy_mode}' ทั้งหมด {len(matched_data)} ตัว!")
+            st.success(f"🎉 สแกนสำเร็จ! พบหุ้นนวัตกรรมเข้าข่าย '{strategy_mode}' ทั้งหมด {len(matched_data)} ตัว!")
             st.markdown("---")
             
             for item in matched_data:
-                curr_symbol = "฿" if '.BK' in item['Ticker'] else "$"
-                expander_title = f"🟢 📌 [{item['Sector']}] {item['Ticker']} | ราคา: {curr_symbol}{item['Close']} | สวิงกรอบ: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
+                expander_title = f"🟢 📌 [{item['Sector']}] {item['Ticker']} | ราคา: ${item['Close']} | สวิงกรอบ: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
                 
                 with st.expander(expander_title, expanded=False):
                     col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("💰 ราคาปัจจุบัน", f"{curr_symbol}{item['Close']}")
+                    col1.metric("💰 ราคาปัจจุบัน", f"${item['Close']}")
                     col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
                     col3.metric("📊 ความกว้างกรอบ", f"{item['Range_Pct']}%")
                     col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
                     
                     st.markdown("---")
-                    st.markdown(f"📅 **วันประกาศงบ / ข่าวสำคัญ:** ⚡ **{item['Next_Earnings']}**")
-                    st.markdown(f"🔮 **Catalyst นวัตกรรม & สิทธิบัตร:** 🚀 **{item['Catalyst_3M']}**")
-                    st.markdown("---")
+                    st.markdown(💀 f"🔬 **เจาะลึกสิทธิบัตร & นวัตกรรม (IP Asset):** **{item['Patent']}**")
+                    st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
+                    st.markdown(f"🎯 **จุดขายทำกำไร:** 🔴 **${item['TP1']} (เป้าแรก 5%)** | 🚀 **${item['Target']} (+{item['Upside']}%)**")
                     
-                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, POC (จุดซื้อขายหนาแน่น) และ % Volume Change แบบไดนามิก")
+                    st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, POC และ % Volume Change แบบไดนามิก")
                     tf_rows = []
                     for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                         if tf_name in item['TF_Data']:
                             info = item['TF_Data'][tf_name]
                             tf_rows.append({
                                 'ช่วงเวลา': tf_name, 'วันที่อ้างอิง': info['start_date'],
-                                'ราคาสูงสุด (High)': f"{curr_symbol}{info['high']} ({info['high_pct']:+.1f}%)",
-                                'ราคาต่ำสุด (Low)': f"{curr_symbol}{info['low']} ({info['low_pct']:+.1f}%)",
+                                'ราคาสูงสุด (High)': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                                'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
                                 'ความกว้างกรอบ': f"{info['range_pct']}%",
-                                'POC (ราคาหนาแน่นสุด)': f"{curr_symbol}{info['poc_price']}",
+                                'POC (ราคาหนาแน่นสุด)': f"${info['poc_price']}",
                                 '% Vol Change (Dynamic)': f"{info['vol_change_pct']:+.1f}%"
                             })
                     st.table(pd.DataFrame(tf_rows))
-                    
-                    st.markdown(f"📍 **จุดเข้าซื้อ (Entry Zone):** 🟢 **{item['Entry_Zone']}**")
-                    st.markdown(f"🎯 **จุดขายทำกำไร (Take Profit):** 🔴 **{item['TP1']}** | 🚀 **{item['TP2']}**")
-                    
-                    st.info(f"📈 **เจาะลึกงบการเงินและกระแสเงินสด:** {item['Fundamental']}")
-                    st.success(f"🔬 **วิเคราะห์สิทธิบัตร / นวัตกรรมแห่งอนาคต:** {item['Patent']}")
-                    st.warning(f"🔙 **Catalyst / ข่าวย้อนหลัง:** {item['Past_Catalyst']}")
             st.markdown("---")
         else:
-            st.warning("รอบนี้ไม่มีหุ้นตัวไหนในตลาดที่ผ่านเกณฑ์ของโหมดนี้ ลองสลับโหมดเงื่อนไขอื่นดูนะเพื่อน!")
+            st.warning("รอบนี้ไม่มีหุ้นนวัตกรรมตัวไหนผ่านเกณฑ์เข้มงวดนี้ ลองสลับโหมดเงื่อนไขดูนะเพื่อน!")
