@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Mega Custom Universe Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Full Integration & Volume Dynamics)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Fixed Volume Dynamics & Full Integration)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -103,6 +103,9 @@ def calculate_timeframe_metrics(df):
     results = {}
     current_close = df['Close'].iloc[-1]
     
+    # คำนวณ Volume เฉลี่ยภาพรวมทั้งหมดของ dataframe (ย้อนหลัง 3 เดือน) เพื่อใช้เป็น Baseline อ้างอิงรายตัว
+    baseline_full_avg = df['Volume'].mean()
+
     for label, days in timeframes.items():
         sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
         high_max = sub_df['High'].max()
@@ -121,6 +124,7 @@ def calculate_timeframe_metrics(df):
         except:
             poc_price = round(current_close, 2)
 
+        # Vol Spike เปรียบเทียบระหว่างช่วงเวลานั้นกับช่วงก่อนหน้าของตัวมันเอง
         if len(df) >= (days * 2):
             recent_vol_avg = df.tail(days)['Volume'].mean()
             previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
@@ -132,13 +136,10 @@ def calculate_timeframe_metrics(df):
         else:
             vol_spike_today_pct = 0.0
 
-        baseline_start_idx = max(0, len(df) - (days * 2))
-        baseline_end_idx = max(0, len(df) - days)
-        
-        if baseline_end_idx > baseline_start_idx:
-            baseline_vol = df['Volume'].iloc[baseline_start_idx:baseline_end_idx].mean()
-            avg_sub_vol = sub_df['Volume'].mean()
-            vol_period_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
+        # Vol Period Change เทียบวอลุ่มเฉลี่ยช่วงเวลานั้นกับ Baseline เฉลี่ยระยะยาวของตัวมันเอง
+        sub_period_avg = sub_df['Volume'].mean()
+        if baseline_full_avg > 0:
+            vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
         else:
             vol_period_change_pct = 0.0
         
@@ -227,14 +228,14 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
             last_vol = recent['Volume'].iloc[-1]
             last_vol_ma = recent['Vol_MA'].iloc[-1]
-            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
+            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if pd.notna(last_vol_ma) and last_vol_ma > 0 else 0.0
             
             is_matched = False
             if "สะสม" in strategy_mode:
                 if range_pct <= 0.22 and 30 <= latest_rsi <= 70:
                     is_matched = True
             else:
-                vol_spike = last_vol >= (last_vol_ma * 1.10)
+                vol_spike = last_vol >= (last_vol_ma * 1.10) if pd.notna(last_vol_ma) else False
                 if range_pct >= 0.03 and latest_rsi >= 40 and vol_spike:
                     is_matched = True
 
