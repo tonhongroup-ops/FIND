@@ -1,12 +1,12 @@
-ไimport streamlit as st
+import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Full Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Complete Universe & Advanced Volume Dynamics)")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Clean Version)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Clean Code & Advanced Volume Dynamics)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
