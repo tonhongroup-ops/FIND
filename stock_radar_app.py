@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation & Swing Trading Radar Pro (AI Analyst Friend Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Hybrid Volume & POC Matrix - เน้นตารางวิเคราะห์เนื้อๆ)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Fixed Step-by-Step Volume & POC Matrix)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -90,7 +90,6 @@ def calculate_timeframe_metrics(df):
     }
     results = {}
     current_close = df['Close'].iloc[-1]
-    last_volume = df['Volume'].iloc[-1]
     
     for label, days in timeframes.items():
         sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
@@ -111,23 +110,24 @@ def calculate_timeframe_metrics(df):
         except:
             poc_price = round(current_close, 2)
 
-        # แบบ C: ไฮบริด 2 มุมมอง (1. Vol วันล่าสุด เทียบเฉลี่ยในกรอบ | 2. Vol เฉลี่ยกรอบนี้ เทียบอืดอดีต)
-        if days > 1 and len(sub_df) > 1:
-            historical_part = sub_df.iloc[:-1]['Volume'].mean()
-            vol_spike_today_pct = round(((last_volume - historical_part) / historical_part) * 100, 1) if historical_part > 0 else 0.0
+        # แก้ไขสมการ Volume ตามสเต็ปที่ถูกต้อง (เปรียบเทียบแท่งล่าสุดเทียบกับช่วงวันก่อนหน้าในกรอบนั้นๆ แบบตรงไปตรงมา)
+        if len(sub_df) >= 2:
+            latest_vol = sub_df['Volume'].iloc[-1]
+            prev_avg_vol = sub_df['Volume'].iloc[:-1].mean()
+            vol_spike_today_pct = round(((latest_vol - prev_avg_vol) / prev_avg_vol) * 100, 1) if prev_avg_vol > 0 else 0.0
         else:
             vol_spike_today_pct = 0.0
 
-        avg_sub_vol = sub_df['Volume'].mean()
+        # เปรียบเทียบค่าเฉลี่ยก้อนปัจจุบัน กับก้อนอดีต (เช็ครอยเท้า Smart Money สะสม)
         baseline_start_idx = max(0, len(df) - (days * 2))
         baseline_end_idx = max(0, len(df) - days)
         
         if baseline_end_idx > baseline_start_idx:
             baseline_vol = df['Volume'].iloc[baseline_start_idx:baseline_end_idx].mean()
+            avg_sub_vol = sub_df['Volume'].mean()
+            vol_period_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
         else:
-            baseline_vol = df['Volume'].mean()
-            
-        vol_period_change_pct = round(((avg_sub_vol - baseline_vol) / baseline_vol) * 100, 1) if baseline_vol > 0 else 0.0
+            vol_period_change_pct = 0.0
         
         results[label] = {
             'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
@@ -288,8 +288,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 col4.metric("🎯 เป้าทำกำไร (TP1 5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
-                # 📊 ยกตารางเปรียบเทียบกรอบเวลา POC และ Volume ขึ้นมาไว้ด้านบนสุดเน้นๆ ตามที่มึงขอ
-                st.markdown("### ⏱️ ตารางวิเคราะห์กรอบเวลา, จุดศูนย์กลางราคา (POC) และ Hybrid Volume Change")
+                st.markdown("### ⏱️ ตารางวิเคราะห์กรอบเวลา, จุดศูนย์กลางราคา (POC) และ Step Volume Change")
                 tf_rows = []
                 for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
@@ -300,13 +299,12 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                             'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
                             'กรอบ (Range)': f"{info['range_pct']}%",
                             'POC (ฐานราคาหนาแน่นสุด)': f"${info['poc_price']}",
-                            '🔥 Vol วันนี้เทียบกรอบ': f"{info['vol_spike_today']:+.1f}%",
+                            '🔥 Vol ล่าสุดเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
                             '📈 Vol เฉลี่ยเทียบอดีต': f"{info['vol_period_change']:+.1f}%"
                         })
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                # 💬 ย้ายบทวิเคราะห์และข่าวสารลงมาไว้ด้านล่างตาราง
                 st.markdown("### 💬 มุมมองเพื่อนซี้ (สถานะ, กลยุทธ์เข้าซื้อ & เกมเจ้ามือ)")
                 st.markdown(item['Status_Tag'])
                 st.info(item['Commentary'])
