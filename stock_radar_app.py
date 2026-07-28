@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Status Analysis Version)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure และสาธารณูปโภค พร้อมวิเคราะห์สถานะหุ้นเชิงลึก")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (AI Analyst Friend Edition)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตรระดับโลก, AI Infrastructure พร้อมเพื่อนซี้ช่วยวิเคราะห์สถานะและดักจับเกมเจ้ามือ")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -135,31 +135,59 @@ def calculate_rsi(series, period=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
 
-def analyze_stock_status(latest_rsi, range_pct, vol_change, rsi_2m_avg):
-    """ฟังก์ชันวิเคราะห์สถานะหุ้นแบบเพื่อนคู่คิด วิเคราะห์เชิงลึกตามพฤติกรรมราคาและวอลุ่ม"""
-    if range_pct <= 7.0 and 42 <= latest_rsi <= 58 and vol_change < 10:
-        return (
-            "🟡 **สถานะ: กำลังสะสมพลังในกรอบแคบ (Accumulation Phase)**",
-            "พฤติกรรมราคาซึมตัวออกข้าง ไร้แรงขายกดดันหนัก วอลุ่มเบาบางสลับแห้งสนิท "
-            "เหมาะสำหรับทยอยสะสมทีละไม้ (DCA/Accumulate) รอจังหวะข่าวหรือออเดอร์ใหญ่เข้ามาจุดพลุเบรกกรอบ"
+def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_change, rsi_2m_avg, tf_data):
+    """ระบบวิเคราะห์สไตล์เพื่อนซี้กูรูหุ้นสิทธิบัตรและเซียนเล่นรอบ ตีกรอบสถานะให้ชัดเจน"""
+    
+    # เช็คสัญญาณ Volume Divergence (หลอกลวง / แจกของ)
+    vol_3d_change = tf_data.get('3 วัน', {}).get('vol_change_pct', 0)
+    
+    analysis_blocks = []
+    
+    # 1. วิเคราะห์สถานะทางเทคนิคและพฤติกรรมเจ้ามือ
+    if range_pct <= 7.0 and 40 <= latest_rsi <= 58 and vol_change < 10:
+        status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบแคบ / Smart Money Accumulation]**"
+        commentary = (
+            f"เพื่อนว่าตัว **{ticker}** ตัวนี้ทรงสวยวะ กราฟซึมตัวออกข้าง ไร้แรงขายทุบหนัก "
+            f"วอลุ่มเบาบางแห้งสนิทแบบนี้ ส่อเค้าว่ารายใหญ่กำลังอมของเก็บเงียบๆ รอข่าวสิทธิบัตรหรือผลประกอบการออก "
+            f"เหมาะสำหรับทยอยสะสม (Accumulate) แถวโซนแนวรับ ไม่ต้องรีบไล่ราคา ปลอดภัยสูงมาก"
         )
-    elif latest_rsi > rsi_2m_avg and 45 <= latest_rsi <= 65 and vol_change >= 10:
-        return (
-            "🟢 **สถานะ: เริ่มส่งสัญญาณ Turnaround / ฟื้นตัวกลับตัวชัดเจน**",
-            "โมเมนตัมราคาเริ่มยกตัวตัดค่าเฉลี่ยระยะกลางขึ้นมา RSI ไต่ระดับออกจากโซนล่างพร้อมวอลุ่มเริ่มหนุนหนานขึ้นเรื่อยๆ "
-            "บ่งบอกถึงเม็ดเงิน Smart Money เริ่มไหลกลับเข้าเก็งกำไรในธีมสิทธิบัตรและนวัตกรรมตัวนี้อีกรอบ"
+    elif latest_rsi > rsi_2m_avg and 45 <= latest_rsi <= 68 and vol_change >= 5:
+        status_tag = "🟢 **[สถานะ: เริ่มส่งสัญญาณ Turnaround / กลิ่นอายขาขึ้นรอบใหม่]**"
+        commentary = (
+            f"เฮ้ย ตัว **{ticker}** น่าสนใจ โมเมนตัมกำลังยกตัวตัดค่าเฉลี่ยขึ้นมา RSI ไต่ระดับออกจากโซนล่าง "
+            f"ประกอบกับมีวอลุ่มเริ่มหนุนหนานขึ้น แปลว่าเม็ดเงินลงทุนเริ่มไหลกลับมาเก็งกำไรในสตอรี่นวัตกรรมและเทคโนโลยีตัวนี้แล้ว "
+            f"เข้าเกณฑ์หุ้นกำลัง Turnaround เตรียมตัววิ่งตามรอบใหญ่ได้"
         )
-    elif range_pct > 7.0 and vol_change >= 20:
-        return (
-            "🔥 **สถานะ: กำลังเหวี่ยงกรอบแรง / โมเมนตัมเบรกเอาท์เด่นชัด (Volatile Breakout)**",
-            "ราคามีการสวิงตัวแรงและปริมาณการซื้อขายหนาแน่นผิดปกติ (Volume Surge) กำลังอยู่ในช่วงเลือกทางหรือวิ่งตามกระแสข่าวร้อน "
-            "เหมาะกับสายเก็งกำไรเล่นรอบสั้น (Swing Trading) ต้องบริหารความเสี่ยงและตั้งจุด Trailing Stop ให้ดี"
-        )
+    elif range_pct > 7.0 and vol_change >= 15:
+        if vol_3d_change < -20:
+            status_tag = "🔴 **[สถานะอันตราย: ระวังโดนแจกของ / Bull Trap (Volume Divergence)]**"
+            commentary = (
+                f"มึงระวังให้ดีนะเว้ย ตัว **{ticker}** ราคาทำท่าจะวิ่งหรือยืนสูง แต่พอมาเช็กวอลุ่ม 3 วันล่าสุด "
+                f"ปรากฏว่า **% Vol Change ดันติดลบหนักสวนทางกับราคา** แบบนี้แปลว่าเจ้ามืออาจกำลังรินของแจกเม่า "
+                f"ระวังโดนลากไปเชือด อย่าเพิ่งเอาเงินไปเสี่ยงไล่ราคาเด็ดขาด!"
+            )
+        else:
+            status_tag = "🔥 **[สถานะ: กำลังเหวี่ยงกรอบแรง / โมเมนตัมเบรกเอาท์เด่นชัด (Volatile Breakout)]**"
+            commentary = (
+                f"ตัว **{ticker}** กำลังซิ่งตามกระแสข่าวร้อนแรง ราคาสวิงตัวกว้างและวอลุ่มหนาแน่นสุดๆ "
+                f"เหมาะกับสาย Swing Trading เล่นรอบสั้นเกาะกระแสเทรนด์นวัตกรรม แต่ต้องรัดกุม ตั้งจุด Trailing Stop ไว้ด้วย อย่าประมาท!"
+            )
     else:
-        return (
-            "⚪ **สถานะ: กำลังพักตัว / ซื้อขายตามกรอบปกติ (Consolidation / Range Bound)**",
-            "ราคายังเคลื่อนไหวตามกรอบเทคนิคปกติ ไม่มีสัญญาณความผิดปกติเชิงปริมาณวอลุ่ม รอติดตามความคืบหน้าของผลประกอบการและข่าวสารนวัตกรรมถัดไป"
+        status_tag = "⚪ **[สถานะ: พักตัวตามรอบปกติ / รอสะสมพลัง (Consolidation)]**"
+        commentary = (
+            f"หุ้น **{ticker}** ตัวนี้ยังแกว่งตัวตามกรอบเทคนิคปกติ ไม่มีอะไรหวือหวา "
+            f"ให้โฟกัสที่สตอรี่สิทธิบัตรและนวัตกรรมหลักของบริษัทนี้ไปก่อน รอจังหวะราคาลงมาแตะแนวรับค่อยหาจังหวะเก็บเพิ่ม"
         )
+
+    # 2. วิเคราะห์เชิงลึกด้านสิทธิบัตรและนวัตกรรม (IP Moat Value)
+    ip_analysis = (
+        f"🔬 **มุมมองสิทธิบัตรและคูเมืองธุรกิจ (IP Moat & Patent Value):** "
+        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* ซึ่งในโลกอนาคตบริษัทที่มีสิทธิบัตรคุ้มครองและเทคโนโลยีเฉพาะตัวแบบนี้ "
+        f"จะมีอำนาจต่อรองสูงมาก คู่แข่งเจาะเข้ามาแย่งส่วนแบ่งตลาดยาก กระแสเงินสดในระยะยาวจะมั่นคง "
+        f"เหมาะกับการถือลงทุนกินรอบใหญ่ตามรอบวัฏจักรนวัตกรรมโลก"
+    )
+
+    return status_tag, commentary, ip_analysis
 
 universe = get_comprehensive_universe()
 
@@ -210,7 +238,6 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             last_vol = recent['Volume'].iloc[-1]
             last_vol_ma = recent['Vol_MA'].iloc[-1]
             
-            # คำนวณ % Volume Change ล่าสุดเทียบกับค่าเฉลี่ย
             vol_change_val = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
             is_matched = False
@@ -226,8 +253,10 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 tp1_price = round(latest_close * 1.05, 2)
                 
-                # วิเคราะห์สถานะหุ้น
-                status_title, status_desc = analyze_stock_status(latest_rsi, range_pct * 100, vol_change_val, rsi_2m_avg)
+                # เรียกใช้งานสมองกลเพื่อนซี้วิเคราะห์สถานะ
+                status_tag, commentary, ip_analysis = friend_expert_analysis(
+                    ticker, moat_story, latest_rsi, range_pct * 100, vol_change_val, rsi_2m_avg, tf_data
+                )
                 
                 matched_data.append({
                     'Ticker': ticker, 'Moat': moat_story,
@@ -235,7 +264,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
                     'TF_Data': tf_data, 'TP1': tp1_price,
                     'Low_Min': round(low_min, 2),
-                    'Status_Title': status_title, 'Status_Desc': status_desc
+                    'Status_Tag': status_tag, 'Commentary': commentary, 'IP_Analysis': ip_analysis
                 })
         except:
             continue
@@ -261,14 +290,15 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 col4.metric("🎯 เป้าทำกำไร (TP1 5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
-                st.markdown(f"🔬 **จุดแข็งสิทธิบัตร, IP Moat & Ecosystem:** **{item['Moat']}**")
+                st.markdown(f"🔬 **จุดแข็งสิทธิบัตร & IP Moat:** **{item['Moat']}**")
                 st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
 
-                # --- ส่วนวิเคราะห์สถานะหุ้นต่อท้ายตามที่ขอ ---
+                # --- ส่วนบทวิเคราะห์จากเพื่อนซี้กูรูหุ้นสิทธิบัตร ---
                 st.markdown("---")
-                st.markdown("### 🧠 มุมมองวิเคราะห์สถานะหุ้นเชิงลึก (เพื่อนคู่คิด)")
-                st.markdown(item['Status_Title'])
-                st.info(item['Status_Desc'])
+                st.markdown("### 💬 มุมมองเพื่อนซี้ (วิเคราะห์สถานะ & เตือนภัยเกมเจ้ามือ)")
+                st.markdown(item['Status_Tag'])
+                st.info(item['Commentary'])
+                st.success(item['IP_Analysis'])
 
                 st.markdown("---")
                 st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change")
