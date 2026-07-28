@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Sidebar Watchlist)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ด้านข้าง")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Persistent Watchlist)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ที่จำค่าได้จริง")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -135,13 +135,13 @@ def calculate_rsi(series, period=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
 
-# Initialize Session State for Bookmarks
+# Initialize Session State
 if 'bookmarks' not in st.session_state:
     st.session_state.bookmarks = {}
 
 universe = get_comprehensive_universe()
 
-# --- SIDEBAR CONFIGURATION & BOOKMARK WATCHLIST ---
+# --- SIDEBAR CONFIGURATION & PERSISTENT WATCHLIST ---
 st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ")
 selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
 strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
@@ -150,9 +150,12 @@ strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกล�
 ])
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 หุ้นที่บันทึกไว้ (Bookmark Watchlist)")
+st.sidebar.markdown("### 📌 หุ้นที่บันทึกไว้ (Watchlist)")
 
-if st.sidebar.button("🧹 ล้างรายการ Bookmark ทั้งหมด"):
+if st.sidebar.button("🧹 ล้างรายการทั้งหมด"):
+    keys_to_del = [k for k in st.session_state.keys() if k.startswith('bm_') or k.startswith('target_')]
+    for k in keys_to_del:
+        del st.session_state[k]
     st.session_state.bookmarks = {}
     st.rerun()
 
@@ -179,11 +182,13 @@ if st.session_state.bookmarks:
             st.markdown(f"💰 **ราคาปิดล่าสุด:** ${live_close}")
             color_prefix = "🟢" if pct_change >= 0 else "🔴"
             st.markdown(f"📊 **% เปลี่ยนแปลง:** {color_prefix} **{pct_change:+.2f}%**")
-            if st.button(f"❌ ลบ {tkr}", key=f"del_bm_{tkr}"):
+            if st.button(f"❌ เอาออก", key=f"sidebar_del_{tkr}"):
                 del st.session_state.bookmarks[tkr]
+                if f"bm_{tkr}" in st.session_state:
+                    st.session_state[f"bm_{tkr}"] = False
                 st.rerun()
 else:
-    st.sidebar.info("ยังไม่มีหุ้นที่ติ๊กเก็บไว้ เลือกติ๊กจากผลการสแกนด้านขวาได้เลยเพื่อน")
+    st.sidebar.info("ยังไม่มีหุ้นใน Watchlist ติ๊กจากผลสแกนด้านขวาได้เลย")
 
 st.markdown("---")
 st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
@@ -274,34 +279,38 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 st.markdown(f"🔬 **จุดแข็งสิทธิบัตร, IP Moat & Ecosystem:** **{item['Moat']}**")
                 st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
                 
-                # --- BOOKMARK FEATURE ---
+                # --- STATE-BASED BOOKMARK CONTROLS ---
                 st.markdown("### 📌 ระบบ Bookmark & บันทึกเป้าหมายทำกำไร")
-                is_bookmarked = ticker in st.session_state.bookmarks
                 
-                col_bm1, col_bm2, col_bm3 = st.columns([1, 2, 2])
+                bm_key = f"bm_{ticker}"
+                target_key = f"target_{ticker}"
+                
+                # Setup default session state if not exists
+                if bm_key not in st.session_state:
+                    st.session_state[bm_key] = ticker in st.session_state.bookmarks
+                if target_key not in st.session_state:
+                    st.session_state[target_key] = float(st.session_state.bookmarks[ticker]['target_price']) if ticker in st.session_state.bookmarks else float(item['Default_Target'])
+
+                col_bm1, col_bm2 = st.columns([1, 2])
                 with col_bm1:
-                    bookmark_checked = st.checkbox("ติ๊กเก็บเข้าพอร์ต", value=is_bookmarked, key=f"bm_check_{ticker}")
-                
-                default_target_val = st.session_state.bookmarks[ticker]['target_price'] if is_bookmarked else item['Default_Target']
+                    is_checked = st.checkbox("ติ๊กเก็บเข้าพอร์ต", key=bm_key)
                 with col_bm2:
-                    target_input = st.number_input("ราคาที่คิดว่าจะขายทำกำไร ($)", value=float(default_target_val), step=0.5, key=f"target_input_{ticker}")
+                    target_val = st.number_input("ราคาที่คิดว่าจะขายทำกำไร ($)", step=0.5, key=target_key)
                 
-                if bookmark_checked:
-                    if not is_bookmarked:
+                # Handle bookmark actions directly based on checkbox state
+                if is_checked:
+                    if ticker not in st.session_state.bookmarks:
                         st.session_state.bookmarks[ticker] = {
                             'bookmark_price': current_close,
-                            'target_price': target_input,
+                            'target_price': target_val,
                             'date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
                         }
-                        st.success(f"บันทึก Bookmark หุ้น {ticker} ที่ราคา ${current_close} เรียบร้อย!")
-                        st.rerun()
                     else:
-                        st.session_state.bookmarks[ticker]['target_price'] = target_input
+                        # Update target price dynamically without losing data
+                        st.session_state.bookmarks[ticker]['target_price'] = target_val
                 else:
-                    if is_bookmarked:
+                    if ticker in st.session_state.bookmarks:
                         del st.session_state.bookmarks[ticker]
-                        st.info(f"ลบ Bookmark หุ้น {ticker} ออกจากพอร์ตแล้ว")
-                        st.rerun()
 
                 st.markdown("---")
                 st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change")
