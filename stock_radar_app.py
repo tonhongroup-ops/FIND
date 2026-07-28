@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation & Swing Trading Radar Pro (AI Analyst Friend Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Fixed Step-by-Step Volume & POC Matrix)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Strict Mode: Range-Bound vs Breakout)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -101,7 +101,6 @@ def calculate_timeframe_metrics(df):
         low_pct = round(((low_min - current_close) / current_close) * 100, 1)
         total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
         
-        # คำนวณ POC (Point of Control)
         try:
             hist_sub = sub_df.copy()
             hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
@@ -110,15 +109,17 @@ def calculate_timeframe_metrics(df):
         except:
             poc_price = round(current_close, 2)
 
-        # แก้ไขสมการ Volume ตามสเต็ปที่ถูกต้อง (เปรียบเทียบแท่งล่าสุดเทียบกับช่วงวันก่อนหน้าในกรอบนั้นๆ แบบตรงไปตรงมา)
-        if len(sub_df) >= 2:
+        if len(df) >= (days * 2):
+            recent_vol_avg = df.tail(days)['Volume'].mean()
+            previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
+            vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1) if previous_vol_avg > 0 else 0.0
+        elif len(sub_df) >= 2 and days == 1:
             latest_vol = sub_df['Volume'].iloc[-1]
-            prev_avg_vol = sub_df['Volume'].iloc[:-1].mean()
-            vol_spike_today_pct = round(((latest_vol - prev_avg_vol) / prev_avg_vol) * 100, 1) if prev_avg_vol > 0 else 0.0
+            prev_vol = sub_df['Volume'].iloc[-2]
+            vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1) if prev_vol > 0 else 0.0
         else:
             vol_spike_today_pct = 0.0
 
-        # เปรียบเทียบค่าเฉลี่ยก้อนปัจจุบัน กับก้อนอดีต (เช็ครอยเท้า Smart Money สะสม)
         baseline_start_idx = max(0, len(df) - (days * 2))
         baseline_end_idx = max(0, len(df) - days)
         
@@ -144,47 +145,25 @@ def calculate_rsi(series, period=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
 
-def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_period_change, rsi_2m_avg, tf_data):
-    vol_3d_spike = tf_data.get('3 วัน', {}).get('vol_spike_today', 0)
+def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_period_change, rsi_2m_avg, tf_data, mode):
     poc_1m = tf_data.get('1 เดือน', {}).get('poc_price', 0)
 
-    if range_pct <= 15.0 and 38 <= latest_rsi <= 62 and vol_period_change < 25:
-        status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบ / Smart Money Accumulation Zone]**"
+    if mode == "1. โหมดสะสมราคาในกรอบ (Range-Bound Swing / Low Risk Accumulation)":
+        status_tag = "🟡 **[สถานะ: กำลังพักตัวสะสมพลังในกรอบ - รอรับโซนแนวรับ]**"
         commentary = (
-            f"เพื่อนว่าตัว **{ticker}** ทรงนี้เข้าตา กราฟแกว่งตัวออกข้างรับความผันผวนตามรอบหุ้นนวัตกรรม "
-            f"วอลุ่มเฉลี่ยไม่บานปลาย แปลว่าไม่มีแรงเทขายตื่นตระหนก มีฐานราคา POC สำคัญอยู่ที่ประมาณ **${poc_1m}** "
-            f"เหมาะสำหรับทยอยเก็บสะสมทีละไม้แถวโซนแนวรับ ปลอดภัยรอรอบข่าวสิทธิบัตรหรือผลงานใหม่!"
+            f"เพื่อนว่าตัว **{ticker}** ทรงนี้เข้าตาสำหรับการเล่นรอบ กรอบราคา 1 เดือนคุมความเสี่ยงได้ดี "
+            f"มีฐานราคา POC หนาแน่นอยู่ที่ประมาณ **${poc_1m}** เหมาะสำหรับทยอยสะสมหุ้นนวัตกรรมยามที่ตลาดย่อตัว ปลอดภัยรอรอบข่าว!"
         )
-    elif latest_rsi > rsi_2m_avg and 42 <= latest_rsi <= 70 and vol_period_change >= 5:
-        status_tag = "🟢 **[สถานะ: สัญญาณ Turnaround / เม็ดเงินเริ่มไหลเข้าเก็งกำไร]**"
-        commentary = (
-            f"เฮ้ย ตัว **{ticker}** โมเมนตัมกำลังไต่ระดับขึ้นสวยงาม RSI ตัดค่าเฉลี่ยขึ้นมา "
-            f"และ % Vol Change สะท้อนว่ามีกระแสเงินทุนระลอกใหม่เข้ามาหนุนสตอรี่นวัตกรรมตัวนี้ "
-            f"ถ้าทะลุแนวต้าน POC ระยะสั้นได้ มีลุ้นวิ่งยาวตามเทรนด์!"
-        )
-    elif range_pct > 15.0 and vol_period_change >= 20:
-        if vol_3d_spike < -15:
-            status_tag = "🔴 **[สถานะอันตราย: ระวัง Bull Trap / สัญญาณเตือนแจกของ]**"
-            commentary = (
-                f"ระวังให้ดีนะเว้ย ตัว **{ticker}** ราคาสวิงแรงก็จริง แต่เช็กวอลุ่ม 3 วันล่าสุดดัน **ติดลบสวนทางกับราคา** "
-                f"ระวังเจ้ามือรินของใส่หัวเม่า ใช้ POC เป็นจุดเช็กถ้าราการ่วงหลุดราคาหนาแน่นแปลว่าเกมพลิก ต้องรีบเผ่น!"
-            )
-        else:
-            status_tag = "🔥 **[สถานะ: โมเมนตัมแรงตามข่าว / Swing Breakout]**"
-            commentary = (
-                f"ตัว **{ticker}** กำลังซิ่งตามกระแส วอลุ่มหนาและราคาสวิงกว้าง เหมาะกับการเล่นรอบสั้นตามรอบข่าว "
-                f"เกาะติดแนวรับ POC ให้ดี ถ้าไม่หลุดก็ถือรันเทรนด์ต่อได้ยาวๆ"
-            )
     else:
-        status_tag = "⚪ **[สถานะ: พักฐานสะสมกำลังปกติ / Consolidating]**"
+        status_tag = "🔥 **[สถานะ: กราฟระเบิดพลัง / Breakout ตามรอบข่าวและวอลุ่ม]**"
         commentary = (
-            f"หุ้น **{ticker}** ตัวนี้กำลังพักตัวเพื่อสร้างฐานใหม่ตามรอบความผันผวน ให้ใช้ราคา POC เป็นจุดอ้างอิงในการรอรับของเพิ่ม"
+            f"ตัว **{ticker}** กำลังจ่อทะลุกรอบแนวต้านสำคัญพร้อมกระแสเงินทุนหนุน โมเมนตัมกำลังซิ่งตามสตอรี่นวัตกรรม "
+            f"เหมาะกับสายเก็งกำไรตามน้ำ เกาะแนวรับ POC ไว้ให้ดี ถ้าไม่หลุด ลุยต่อได้ยาวๆ!"
         )
 
     ip_analysis = (
         f"🔬 **มุมมองสิทธิบัตรและคูเมืองธุรกิจ (IP Moat & Patent Value):** "
-        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* การมีสิทธิบัตรคุ้มครองและเทคโนโลยีล้ำสมัยแบบนี้ช่วยสร้างเกราะป้องกันคู่แข่ง "
-        f"ทำให้บริษัทมีความสามารถในการทำกำไรระยะยาวที่แข็งแกร่งมาก"
+        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* การมีสิทธิบัตรคุ้มครองและเทคโนโลยีล้ำสมัยแบบนี้ช่วยสร้างเกราะป้องกันคู่แข่งเด็ดขาด"
     )
 
     return status_tag, commentary, ip_analysis
@@ -194,13 +173,13 @@ universe = get_comprehensive_universe()
 st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ")
 selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
 strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
-    "1. โหมดสะสมยืดหยุ่น (รองรับความผันผวน/กรอบราคา 1 เดือนไม่เกิน 15%, RSI 38-62)", 
-    "2. โหมดโมเมนตัมเบรกเอาท์ (วอลุ่มพุ่งและราคาสวิงตัวเด่นชัด)"
+    "1. โหมดสะสมราคาในกรอบ (Range-Bound Swing / Low Risk Accumulation)", 
+    "2. โหมดกราฟระเบิดพลัง (Breakout / Volatility Expansion)"
 ])
 
 st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
 
-if st.button("🚀 เริ่มคัดกรองหุ้นตามเกณฑ์เล่นรอบ"):
+if st.button("🚀 เริ่มคัดกรองหุ้นตามเกณฑ์ที่เลือก"):
     target_tickers = universe[selected_sector]
     matched_data = []
     
@@ -236,16 +215,17 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
             last_vol = recent['Volume'].iloc[-1]
             last_vol_ma = recent['Vol_MA'].iloc[-1]
-            
             vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
             is_matched = False
-            if "โหมดสะสมยืดหยุ่น" in strategy_mode:
-                if range_pct <= 0.15 and 38 <= latest_rsi <= 62 and vol_period_change <= 30:
+            if "โหมดสะสมราคาในกรอบ" in strategy_mode:
+                # 🛠️ ลอจิกใหม่: กรอบราคาต้องแคบ (ไม่เกิน 7%) และ RSI อยู่โซนกลางๆ ไม่พุ่งเกินไป
+                if range_pct <= 0.07 and 40 <= latest_rsi <= 58 and vol_period_change <= 15:
                     is_matched = True
             else:
-                vol_spike = last_vol >= (last_vol_ma * 1.2)
-                if range_pct >= 0.04 and latest_rsi >= 42 and vol_spike:
+                # 🛠️ ลอจิกโหมดระเบิด: กรอบกว้างขึ้นและวอลุ่มพุ่งแรงเกินค่าเฉลี่ยชัดเจน
+                vol_spike = last_vol >= (last_vol_ma * 1.25)
+                if range_pct >= 0.05 and latest_rsi >= 50 and vol_spike:
                     is_matched = True
 
             if is_matched:
@@ -253,7 +233,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 tp1_price = round(latest_close * 1.05, 2)
                 
                 status_tag, commentary, ip_analysis = friend_expert_analysis(
-                    ticker, moat_story, latest_rsi, range_pct * 100, vol_period_change, rsi_2m_avg, tf_data
+                    ticker, moat_story, latest_rsi, range_pct * 100, vol_period_change, rsi_2m_avg, tf_data, strategy_mode
                 )
                 
                 matched_data.append({
@@ -271,7 +251,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎯 คัดกรองหุ้นที่ผ่านเกณฑ์เล่นรอบสำเร็จ พบทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 คัดกรองหุ้นตรงตามโหมดที่เลือกสำเร็จ พบทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
@@ -288,7 +268,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 col4.metric("🎯 เป้าทำกำไร (TP1 5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
-                st.markdown("### ⏱️ ตารางวิเคราะห์กรอบเวลา, จุดศูนย์กลางราคา (POC) และ Step Volume Change")
+                st.markdown("### ⏱️ ตารางวิเคราะห์กรอบเวลา, จุดศูนย์กลางราคา (POC) และ Volume Dynamics")
                 tf_rows = []
                 for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
@@ -299,7 +279,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                             'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
                             'กรอบ (Range)': f"{info['range_pct']}%",
                             'POC (ฐานราคาหนาแน่นสุด)': f"${info['poc_price']}",
-                            '🔥 Vol ล่าสุดเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
                             '📈 Vol เฉลี่ยเทียบอดีต': f"{info['vol_period_change']:+.1f}%"
                         })
                 st.table(pd.DataFrame(tf_rows))
@@ -315,4 +295,4 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
 
         st.markdown("---")
     else:
-        st.warning("รอบนี้ไม่มีหุ้นตัวไหนผ่านเกณฑ์ยืดหยุ่น ลองสลับ Sector หรือปรับเปลี่ยนโหมดดูอีกทีนะเพื่อน!")
+        st.warning("รอบนี้ไม่มีหุ้นตัวไหนผ่านเกณฑ์โหมดนี้ ลองสลับ Sector หรือเปลี่ยนโหมดดูอีกทีนะเพื่อน!")
