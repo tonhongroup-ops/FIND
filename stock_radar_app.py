@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation & Swing Trading Radar Pro (AI Analyst Friend Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตรระดับโลก, AI Infrastructure พร้อมเพื่อนซี้ช่วยวิเคราะห์สถานะและดักจับเกมเจ้ามือ")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตรระดับโลก, AI Infrastructure พร้อมเพื่อนซี้ช่วยวิเคราะห์สถานะและดักจับเกมเจ้ามือ (รองรับ POC & ปรับความยืดหยุ่นวอลุ่ม)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -136,67 +136,59 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + (gain / loss)))
 
 def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_change, rsi_2m_avg, tf_data):
-    """ระบบวิเคราะห์สไตล์เพื่อนซี้กูรูหุ้นสิทธิบัตรและเซียนเล่นรอบ ตีกรอบสถานะให้ชัดเจน"""
-    
-    # เช็คสัญญาณ Volume Divergence (หลอกลวง / แจกของ)
     vol_3d_change = tf_data.get('3 วัน', {}).get('vol_change_pct', 0)
     
-    analysis_blocks = []
-    
-    # 1. วิเคราะห์สถานะทางเทคนิคและพฤติกรรมเจ้ามือ
-    if range_pct <= 7.0 and 40 <= latest_rsi <= 58 and vol_change < 10:
-        status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบแคบ / Smart Money Accumulation]**"
+    # ดึงค่า POC ของกรอบ 1 เดือนมาช่วยยืนยันฐานราคา
+    poc_1m = tf_data.get('1 เดือน', {}).get('poc_price', 0)
+
+    if range_pct <= 15.0 and 38 <= latest_rsi <= 62 and vol_change < 25:
+        status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบ / Smart Money Accumulation Zone]**"
         commentary = (
-            f"เพื่อนว่าตัว **{ticker}** ตัวนี้ทรงสวยวะ กราฟซึมตัวออกข้าง ไร้แรงขายทุบหนัก "
-            f"วอลุ่มเบาบางแห้งสนิทแบบนี้ ส่อเค้าว่ารายใหญ่กำลังอมของเก็บเงียบๆ รอข่าวสิทธิบัตรหรือผลประกอบการออก "
-            f"เหมาะสำหรับทยอยสะสม (Accumulate) แถวโซนแนวรับ ไม่ต้องรีบไล่ราคา ปลอดภัยสูงมาก"
+            f"เพื่อนว่าตัว **{ticker}** ทรงนี้เข้าตา กราฟแกว่งตัวออกข้างรับความผันผวนตามรอบหุ้นนวัตกรรม "
+            f"วอลุ่มไม่พุ่งพรวดแบบผิดปกติ แปลว่าไม่มีแรงเทขายตื่นตระหนก มีฐานราคา POC สำคัญอยู่ที่ประมาณ **${poc_1m}** "
+            f"เหมาะสำหรับทยอยเก็บสะสมทีละไม้แถวโซนแนวรับ ปลอดภัยรอรอบข่าวสิทธิบัตรหรือผลงานใหม่!"
         )
-    elif latest_rsi > rsi_2m_avg and 45 <= latest_rsi <= 68 and vol_change >= 5:
-        status_tag = "🟢 **[สถานะ: เริ่มส่งสัญญาณ Turnaround / กลิ่นอายขาขึ้นรอบใหม่]**"
+    elif latest_rsi > rsi_2m_avg and 42 <= latest_rsi <= 70 and vol_change >= 5:
+        status_tag = "🟢 **[สถานะ: สัญญาณ Turnaround / เม็ดเงินเริ่มไหลเข้าเก็งกำไร]**"
         commentary = (
-            f"เฮ้ย ตัว **{ticker}** น่าสนใจ โมเมนตัมกำลังยกตัวตัดค่าเฉลี่ยขึ้นมา RSI ไต่ระดับออกจากโซนล่าง "
-            f"ประกอบกับมีวอลุ่มเริ่มหนุนหนานขึ้น แปลว่าเม็ดเงินลงทุนเริ่มไหลกลับมาเก็งกำไรในสตอรี่นวัตกรรมและเทคโนโลยีตัวนี้แล้ว "
-            f"เข้าเกณฑ์หุ้นกำลัง Turnaround เตรียมตัววิ่งตามรอบใหญ่ได้"
+            f"เฮ้ย ตัว **{ticker}** โมเมนตัมกำลังไต่ระดับขึ้นสวยงาม RSI ตัดค่าเฉลี่ยขึ้นมา "
+            f"และ % Vol Change เริ่มเป็นบวกสะท้อนว่ามีกระแสเงินทุนระลอกใหม่เข้ามาหนุนสตอรี่นวัตกรรมตัวนี้ "
+            f"ถ้าทะลุแนวต้าน POC ระยะสั้นได้ มีลุ้นวิ่งยาวตามเทรนด์!"
         )
-    elif range_pct > 7.0 and vol_change >= 15:
-        if vol_3d_change < -20:
-            status_tag = "🔴 **[สถานะอันตราย: ระวังโดนแจกของ / Bull Trap (Volume Divergence)]**"
+    elif range_pct > 15.0 and vol_change >= 20:
+        if vol_3d_change < -15:
+            status_tag = "🔴 **[สถานะอันตราย: ระวัง Bull Trap / สัญญาณเตือนแจกของ]**"
             commentary = (
-                f"มึงระวังให้ดีนะเว้ย ตัว **{ticker}** ราคาทำท่าจะวิ่งหรือยืนสูง แต่พอมาเช็กวอลุ่ม 3 วันล่าสุด "
-                f"ปรากฏว่า **% Vol Change ดันติดลบหนักสวนทางกับราคา** แบบนี้แปลว่าเจ้ามืออาจกำลังรินของแจกเม่า "
-                f"ระวังโดนลากไปเชือด อย่าเพิ่งเอาเงินไปเสี่ยงไล่ราคาเด็ดขาด!"
+                f"ระวังให้ดีนะเว้ย ตัว **{ticker}** ราคาสวิงแรงก็จริง แต่เช็กวอลุ่ม 3 วันล่าสุดดัน **ติดลบสวนทางกับราคา** "
+                f"ระวังเจ้ามือรินของใส่หัวเม่า ใช้ POC เป็นจุดเช็กถ้าราการ่วงหลุดราคาหนาแน่นแปลว่าเกมพลิก ต้องรีบเผ่น!"
             )
         else:
-            status_tag = "🔥 **[สถานะ: กำลังเหวี่ยงกรอบแรง / โมเมนตัมเบรกเอาท์เด่นชัด (Volatile Breakout)]**"
+            status_tag = "🔥 **[สถานะ: โมเมนตัมแรงตามข่าว / Swing Breakout]**"
             commentary = (
-                f"ตัว **{ticker}** กำลังซิ่งตามกระแสข่าวร้อนแรง ราคาสวิงตัวกว้างและวอลุ่มหนาแน่นสุดๆ "
-                f"เหมาะกับสาย Swing Trading เล่นรอบสั้นเกาะกระแสเทรนด์นวัตกรรม แต่ต้องรัดกุม ตั้งจุด Trailing Stop ไว้ด้วย อย่าประมาท!"
+                f"ตัว **{ticker}** กำลังซิ่งตามกระแส วอลุ่มหนาและราคาสวิงกว้าง เหมาะกับการเล่นรอบสั้นตามรอบข่าว "
+                f"เกาะติดแนวรับ POC ให้ดี ถ้าไม่หลุดก็ถือรันเทรนด์ต่อได้ยาวๆ"
             )
     else:
-        status_tag = "⚪ **[สถานะ: พักตัวตามรอบปกติ / รอสะสมพลัง (Consolidation)]**"
+        status_tag = "⚪ **[สถานะ: พักฐานสะสมกำลังปกติ / Consolidating]**"
         commentary = (
-            f"หุ้น **{ticker}** ตัวนี้ยังแกว่งตัวตามกรอบเทคนิคปกติ ไม่มีอะไรหวือหวา "
-            f"ให้โฟกัสที่สตอรี่สิทธิบัตรและนวัตกรรมหลักของบริษัทนี้ไปก่อน รอจังหวะราคาลงมาแตะแนวรับค่อยหาจังหวะเก็บเพิ่ม"
+            f"หุ้น **{ticker}** ตัวนี้กำลังพักตัวเพื่อสร้างฐานใหม่ตามรอบความผันผวน ให้ใช้ราคา POC เป็นจุดอ้างอิงในการรอรับของเพิ่ม"
         )
 
-    # 2. วิเคราะห์เชิงลึกด้านสิทธิบัตรและนวัตกรรม (IP Moat Value)
     ip_analysis = (
         f"🔬 **มุมมองสิทธิบัตรและคูเมืองธุรกิจ (IP Moat & Patent Value):** "
-        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* ซึ่งในโลกอนาคตบริษัทที่มีสิทธิบัตรคุ้มครองและเทคโนโลยีเฉพาะตัวแบบนี้ "
-        f"จะมีอำนาจต่อรองสูงมาก คู่แข่งเจาะเข้ามาแย่งส่วนแบ่งตลาดยาก กระแสเงินสดในระยะยาวจะมั่นคง "
-        f"เหมาะกับการถือลงทุนกินรอบใหญ่ตามรอบวัฏจักรนวัตกรรมโลก"
+        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* การมีสิทธิบัตรคุ้มครองและเทคโนโลยีล้ำสมัยแบบนี้ช่วยสร้างเกราะป้องกันคู่แข่ง "
+        f"ทำให้บริษัทมีความสามารถในการทำกำไรระยะยาวที่แข็งแกร่งมาก"
     )
 
     return status_tag, commentary, ip_analysis
 
 universe = get_comprehensive_universe()
 
-# --- SIDEBAR CONFIGURATION ---
 st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ")
 selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
 strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
-    "1. โหมดสะสมกรอบแคบ (RSI 40-60 และกรอบราคา 1 เดือนไม่เกิน 10% - ปลอดภัยสูง/รอข่าวเบรก)", 
-    "2. โหมดโมเมนตัมเบรกเอาท์ตามกระแส (วอลุ่มพุ่งและราคาสวิงตัวเด่นชัด - เกาะเทรนด์ร้อน)"
+    "1. โหมดสะสมยืดหยุ่น (รองรับความผันผวน/กรอบราคา 1 เดือนไม่เกิน 15%, RSI 38-62)", 
+    "2. โหมดโมเมนตัมเบรกเอาท์ (วอลุ่มพุ่งและราคาสวิงตัวเด่นชัด)"
 ])
 
 st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
@@ -241,19 +233,18 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             vol_change_val = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
             is_matched = False
-            if "โหมดสะสมกรอบแคบ" in strategy_mode:
-                if range_pct <= 0.10 and 40 <= latest_rsi <= 60 and last_vol <= (last_vol_ma * 1.1):
+            if "โหมดสะสมยืดหยุ่น" in strategy_mode:
+                if range_pct <= 0.15 and 38 <= latest_rsi <= 62 and vol_change_val <= 30:
                     is_matched = True
             else:
-                vol_spike = last_vol >= (last_vol_ma * 1.3)
-                if range_pct >= 0.05 and latest_rsi >= 45 and vol_spike:
+                vol_spike = last_vol >= (last_vol_ma * 1.2)
+                if range_pct >= 0.04 and latest_rsi >= 42 and vol_spike:
                     is_matched = True
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 tp1_price = round(latest_close * 1.05, 2)
                 
-                # เรียกใช้งานสมองกลเพื่อนซี้วิเคราะห์สถานะ
                 status_tag, commentary, ip_analysis = friend_expert_analysis(
                     ticker, moat_story, latest_rsi, range_pct * 100, vol_change_val, rsi_2m_avg, tf_data
                 )
@@ -291,9 +282,8 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 
                 st.markdown("---")
                 st.markdown(f"🔬 **จุดแข็งสิทธิบัตร & IP Moat:** **{item['Moat']}**")
-                st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
+                st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่างอ้างอิงฐานราคา)")
 
-                # --- ส่วนบทวิเคราะห์จากเพื่อนซี้กูรูหุ้นสิทธิบัตร ---
                 st.markdown("---")
                 st.markdown("### 💬 มุมมองเพื่อนซี้ (วิเคราะห์สถานะ & เตือนภัยเกมเจ้ามือ)")
                 st.markdown(item['Status_Tag'])
@@ -301,7 +291,7 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 st.success(item['IP_Analysis'])
 
                 st.markdown("---")
-                st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change")
+                st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change ทุกไทม์ไลน์")
                 tf_rows = []
                 for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
@@ -311,10 +301,10 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                             'ราคาสูงสุด (High)': f"${info['high']} ({info['high_pct']:+.1f}%)",
                             'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
                             'ความกว้างกรอบ': f"{info['range_pct']}%",
-                            'POC (ราคาหนาแน่นสุด)': f"${info['poc_price']}",
+                            'POC (ฐานราคาหนาแน่นสุด)': f"${info['poc_price']}",
                             '% Vol Change': f"{info['vol_change_pct']:+.1f}%"
                         })
                 st.table(pd.DataFrame(tf_rows))
         st.markdown("---")
     else:
-        st.warning("ไม่มีหุ้นตัวไหนใน Sector นี้ผ่านเกณฑ์ในรอบนี้ ลองสลับโหมดกลยุทธ์หรือเปลี่ยน Sector ดูก่อนเพื่อน!")
+        st.warning("รอบนี้ไม่มีหุ้นตัวไหนผ่านเกณฑ์ยืดหยุ่น ลองสลับ Sector หรือปรับเปลี่ยนโหมดดูอีกทีนะเพื่อน!")
