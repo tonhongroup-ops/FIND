@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (with Bookmark Tracker)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ติดตามราคาเป้าหมาย")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Sidebar Watchlist)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ด้านข้าง")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -137,16 +137,53 @@ def calculate_rsi(series, period=14):
 
 # Initialize Session State for Bookmarks
 if 'bookmarks' not in st.session_state:
-    st.session_state.bookmarks = {} # Format: {ticker: {'bookmark_price': val, 'target_price': val, 'date': str}}
+    st.session_state.bookmarks = {}
 
 universe = get_comprehensive_universe()
 
+# --- SIDEBAR CONFIGURATION & BOOKMARK WATCHLIST ---
 st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ")
 selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
 strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
     "1. โหมดสะสมกรอบแคบ (RSI 40-60 และกรอบราคา 1 เดือนไม่เกิน 10% - ปลอดภัยสูง/รอข่าวเบรก)", 
     "2. โหมดโมเมนตัมเบรกเอาท์ตามกระแส (วอลุ่มพุ่งและราคาสวิงตัวเด่นชัด - เกาะเทรนด์ร้อน)"
 ])
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📌 หุ้นที่บันทึกไว้ (Bookmark Watchlist)")
+
+if st.sidebar.button("🧹 ล้างรายการ Bookmark ทั้งหมด"):
+    st.session_state.bookmarks = {}
+    st.rerun()
+
+if st.session_state.bookmarks:
+    for tkr in list(st.session_state.bookmarks.keys()):
+        data = st.session_state.bookmarks[tkr]
+        try:
+            live_df = yf.download(tkr, period="2d", interval="1d", progress=False)
+            if not live_df.empty:
+                if isinstance(live_df.columns, pd.MultiIndex):
+                    live_df.columns = live_df.columns.droplevel(1)
+                live_close = float(live_df['Close'].iloc[-1])
+            else:
+                live_close = data['bookmark_price']
+        except:
+            live_close = data['bookmark_price']
+            
+        bm_price = data['bookmark_price']
+        target_p = data['target_price']
+        pct_change = round(((live_close - bm_price) / bm_price) * 100, 2)
+        
+        with st.sidebar.expander(f"📌 [{tkr}] ตอนติ๊ก: ${bm_price}"):
+            st.markdown(f"🎯 **เป้าขาย:** ${target_p}")
+            st.markdown(f"💰 **ราคาปิดล่าสุด:** ${live_close}")
+            color_prefix = "🟢" if pct_change >= 0 else "🔴"
+            st.markdown(f"📊 **% เปลี่ยนแปลง:** {color_prefix} **{pct_change:+.2f}%**")
+            if st.button(f"❌ ลบ {tkr}", key=f"del_bm_{tkr}"):
+                del st.session_state.bookmarks[tkr]
+                st.rerun()
+else:
+    st.sidebar.info("ยังไม่มีหุ้นที่ติ๊กเก็บไว้ เลือกติ๊กจากผลการสแกนด้านขวาได้เลยเพื่อน")
 
 st.markdown("---")
 st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
@@ -259,7 +296,6 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                         st.success(f"บันทึก Bookmark หุ้น {ticker} ที่ราคา ${current_close} เรียบร้อย!")
                         st.rerun()
                     else:
-                        # Update target price if changed
                         st.session_state.bookmarks[ticker]['target_price'] = target_input
                 else:
                     if is_bookmarked:
@@ -286,11 +322,10 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
     else:
         st.warning("ไม่มีหุ้นตัวไหนใน Sector นี้ผ่านเกณฑ์ในรอบนี้ ลองสลับโหมดกลยุทธ์หรือเปลี่ยน Sector ดูก่อนเพื่อน!")
 
-# --- DISPLAY ALL BOOKMARKS SUMMARY TABLE IN SIDEBAR OR BOTTOM ---
+# --- DISPLAY ALL BOOKMARKS SUMMARY TABLE AT THE BOTTOM ---
 if st.session_state.bookmarks:
     st.markdown("---")
-    st.markdown("## 📊 📋 สรุปรายการ Bookmark หุ้นที่บันทึกไว้ (Portfolio Watchlist)")
-    st.markdown("> *ตารางเปรียบเทียบราคาตอนเริ่มติ๊กเก็บ, ราคาเป้าหมายขายทำกำไร, ราคาปิดตลาดล่าสุด และ % การเปลี่ยนแปลงเทียบกับตลาด*")
+    st.markdown("## 📊 📋 ตารางสรุปรายการ Bookmark หุ้นทั้งหมด (Portfolio Watchlist)")
     
     summary_data = []
     for tkr, data in st.session_state.bookmarks.items():
@@ -307,8 +342,6 @@ if st.session_state.bookmarks:
             
         bm_price = data['bookmark_price']
         target_p = data['target_price']
-        
-        # % Change compared to market close vs bookmark price
         pct_change = round(((live_close - bm_price) / bm_price) * 100, 2)
         target_upside = round(((target_p - live_close) / live_close) * 100, 2)
         
@@ -324,4 +357,4 @@ if st.session_state.bookmarks:
         
     if summary_data:
         df_summary = pd.DataFrame(summary_data)
-        st.dataframe(df_summary.style.highlight_greater(subset=['% เปลี่ยนแปลง (vs วันติ๊ก)'], color='lightgreen'), use_container_width=True)
+        st.dataframe(df_summary, use_container_width=True)
