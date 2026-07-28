@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Persistent Watchlist)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ที่จำค่าได้จริง")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Status Analysis Version)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure และสาธารณูปโภค พร้อมวิเคราะห์สถานะหุ้นเชิงลึก")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -135,13 +135,35 @@ def calculate_rsi(series, period=14):
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
 
-# Initialize Session State
-if 'bookmarks' not in st.session_state:
-    st.session_state.bookmarks = {}
+def analyze_stock_status(latest_rsi, range_pct, vol_change, rsi_2m_avg):
+    """ฟังก์ชันวิเคราะห์สถานะหุ้นแบบเพื่อนคู่คิด วิเคราะห์เชิงลึกตามพฤติกรรมราคาและวอลุ่ม"""
+    if range_pct <= 7.0 and 42 <= latest_rsi <= 58 and vol_change < 10:
+        return (
+            "🟡 **สถานะ: กำลังสะสมพลังในกรอบแคบ (Accumulation Phase)**",
+            "พฤติกรรมราคาซึมตัวออกข้าง ไร้แรงขายกดดันหนัก วอลุ่มเบาบางสลับแห้งสนิท "
+            "เหมาะสำหรับทยอยสะสมทีละไม้ (DCA/Accumulate) รอจังหวะข่าวหรือออเดอร์ใหญ่เข้ามาจุดพลุเบรกกรอบ"
+        )
+    elif latest_rsi > rsi_2m_avg and 45 <= latest_rsi <= 65 and vol_change >= 10:
+        return (
+            "🟢 **สถานะ: เริ่มส่งสัญญาณ Turnaround / ฟื้นตัวกลับตัวชัดเจน**",
+            "โมเมนตัมราคาเริ่มยกตัวตัดค่าเฉลี่ยระยะกลางขึ้นมา RSI ไต่ระดับออกจากโซนล่างพร้อมวอลุ่มเริ่มหนุนหนานขึ้นเรื่อยๆ "
+            "บ่งบอกถึงเม็ดเงิน Smart Money เริ่มไหลกลับเข้าเก็งกำไรในธีมสิทธิบัตรและนวัตกรรมตัวนี้อีกรอบ"
+        )
+    elif range_pct > 7.0 and vol_change >= 20:
+        return (
+            "🔥 **สถานะ: กำลังเหวี่ยงกรอบแรง / โมเมนตัมเบรกเอาท์เด่นชัด (Volatile Breakout)**",
+            "ราคามีการสวิงตัวแรงและปริมาณการซื้อขายหนาแน่นผิดปกติ (Volume Surge) กำลังอยู่ในช่วงเลือกทางหรือวิ่งตามกระแสข่าวร้อน "
+            "เหมาะกับสายเก็งกำไรเล่นรอบสั้น (Swing Trading) ต้องบริหารความเสี่ยงและตั้งจุด Trailing Stop ให้ดี"
+        )
+    else:
+        return (
+            "⚪ **สถานะ: กำลังพักตัว / ซื้อขายตามกรอบปกติ (Consolidation / Range Bound)**",
+            "ราคายังเคลื่อนไหวตามกรอบเทคนิคปกติ ไม่มีสัญญาณความผิดปกติเชิงปริมาณวอลุ่ม รอติดตามความคืบหน้าของผลประกอบการและข่าวสารนวัตกรรมถัดไป"
+        )
 
 universe = get_comprehensive_universe()
 
-# --- SIDEBAR CONFIGURATION & PERSISTENT WATCHLIST ---
+# --- SIDEBAR CONFIGURATION ---
 st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ")
 selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
 strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
@@ -149,48 +171,6 @@ strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกล�
     "2. โหมดโมเมนตัมเบรกเอาท์ตามกระแส (วอลุ่มพุ่งและราคาสวิงตัวเด่นชัด - เกาะเทรนด์ร้อน)"
 ])
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 หุ้นที่บันทึกไว้ (Watchlist)")
-
-if st.sidebar.button("🧹 ล้างรายการทั้งหมด"):
-    keys_to_del = [k for k in st.session_state.keys() if k.startswith('bm_') or k.startswith('target_')]
-    for k in keys_to_del:
-        del st.session_state[k]
-    st.session_state.bookmarks = {}
-    st.rerun()
-
-if st.session_state.bookmarks:
-    for tkr in list(st.session_state.bookmarks.keys()):
-        data = st.session_state.bookmarks[tkr]
-        try:
-            live_df = yf.download(tkr, period="2d", interval="1d", progress=False)
-            if not live_df.empty:
-                if isinstance(live_df.columns, pd.MultiIndex):
-                    live_df.columns = live_df.columns.droplevel(1)
-                live_close = float(live_df['Close'].iloc[-1])
-            else:
-                live_close = data['bookmark_price']
-        except:
-            live_close = data['bookmark_price']
-            
-        bm_price = data['bookmark_price']
-        target_p = data['target_price']
-        pct_change = round(((live_close - bm_price) / bm_price) * 100, 2)
-        
-        with st.sidebar.expander(f"📌 [{tkr}] ตอนติ๊ก: ${bm_price}"):
-            st.markdown(f"🎯 **เป้าขาย:** ${target_p}")
-            st.markdown(f"💰 **ราคาปิดล่าสุด:** ${live_close}")
-            color_prefix = "🟢" if pct_change >= 0 else "🔴"
-            st.markdown(f"📊 **% เปลี่ยนแปลง:** {color_prefix} **{pct_change:+.2f}%**")
-            if st.button(f"❌ เอาออก", key=f"sidebar_del_{tkr}"):
-                del st.session_state.bookmarks[tkr]
-                if f"bm_{tkr}" in st.session_state:
-                    st.session_state[f"bm_{tkr}"] = False
-                st.rerun()
-else:
-    st.sidebar.info("ยังไม่มีหุ้นใน Watchlist ติ๊กจากผลสแกนด้านขวาได้เลย")
-
-st.markdown("---")
 st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
 
 if st.button("🚀 เริ่มคัดกรองหุ้นตามเกณฑ์เล่นรอบ"):
@@ -230,6 +210,9 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             last_vol = recent['Volume'].iloc[-1]
             last_vol_ma = recent['Vol_MA'].iloc[-1]
             
+            # คำนวณ % Volume Change ล่าสุดเทียบกับค่าเฉลี่ย
+            vol_change_val = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
+            
             is_matched = False
             if "โหมดสะสมกรอบแคบ" in strategy_mode:
                 if range_pct <= 0.10 and 40 <= latest_rsi <= 60 and last_vol <= (last_vol_ma * 1.1):
@@ -241,16 +224,18 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                default_upside = 10.0
-                default_target = round(latest_close * (1 + default_upside / 100.0), 2)
                 tp1_price = round(latest_close * 1.05, 2)
+                
+                # วิเคราะห์สถานะหุ้น
+                status_title, status_desc = analyze_stock_status(latest_rsi, range_pct * 100, vol_change_val, rsi_2m_avg)
                 
                 matched_data.append({
                     'Ticker': ticker, 'Moat': moat_story,
                     'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'Default_Target': default_target, 'TP1': tp1_price,
-                    'Low_Min': round(low_min, 2)
+                    'TF_Data': tf_data, 'TP1': tp1_price,
+                    'Low_Min': round(low_min, 2),
+                    'Status_Title': status_title, 'Status_Desc': status_desc
                 })
         except:
             continue
@@ -266,51 +251,24 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             ticker = item['Ticker']
             current_close = item['Close']
             
-            expander_title = f"🟢 📌 [{ticker}] | ราคา: ${current_close} | กรอบราคา: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
+            expander_title = f"🟢 [{ticker}] | ราคา: ${current_close} | กรอบราคา: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
             
             with st.expander(expander_title, expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("💰 ราคาปัจจุบัน", f"${current_close}")
                 col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
                 col3.metric("📊 ความกว้างกรอบ (1M)", f"{item['Range_Pct']}%")
-                col4.metric("🎯 เป้าแนะนำ (TP1 5%)", f"${item['TP1']}")
+                col4.metric("🎯 เป้าทำกำไร (TP1 5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
                 st.markdown(f"🔬 **จุดแข็งสิทธิบัตร, IP Moat & Ecosystem:** **{item['Moat']}**")
                 st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
-                
-                # --- STATE-BASED BOOKMARK CONTROLS ---
-                st.markdown("### 📌 ระบบ Bookmark & บันทึกเป้าหมายทำกำไร")
-                
-                bm_key = f"bm_{ticker}"
-                target_key = f"target_{ticker}"
-                
-                # Setup default session state if not exists
-                if bm_key not in st.session_state:
-                    st.session_state[bm_key] = ticker in st.session_state.bookmarks
-                if target_key not in st.session_state:
-                    st.session_state[target_key] = float(st.session_state.bookmarks[ticker]['target_price']) if ticker in st.session_state.bookmarks else float(item['Default_Target'])
 
-                col_bm1, col_bm2 = st.columns([1, 2])
-                with col_bm1:
-                    is_checked = st.checkbox("ติ๊กเก็บเข้าพอร์ต", key=bm_key)
-                with col_bm2:
-                    target_val = st.number_input("ราคาที่คิดว่าจะขายทำกำไร ($)", step=0.5, key=target_key)
-                
-                # Handle bookmark actions directly based on checkbox state
-                if is_checked:
-                    if ticker not in st.session_state.bookmarks:
-                        st.session_state.bookmarks[ticker] = {
-                            'bookmark_price': current_close,
-                            'target_price': target_val,
-                            'date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
-                        }
-                    else:
-                        # Update target price dynamically without losing data
-                        st.session_state.bookmarks[ticker]['target_price'] = target_val
-                else:
-                    if ticker in st.session_state.bookmarks:
-                        del st.session_state.bookmarks[ticker]
+                # --- ส่วนวิเคราะห์สถานะหุ้นต่อท้ายตามที่ขอ ---
+                st.markdown("---")
+                st.markdown("### 🧠 มุมมองวิเคราะห์สถานะหุ้นเชิงลึก (เพื่อนคู่คิด)")
+                st.markdown(item['Status_Title'])
+                st.info(item['Status_Desc'])
 
                 st.markdown("---")
                 st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change")
@@ -330,40 +288,3 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
         st.markdown("---")
     else:
         st.warning("ไม่มีหุ้นตัวไหนใน Sector นี้ผ่านเกณฑ์ในรอบนี้ ลองสลับโหมดกลยุทธ์หรือเปลี่ยน Sector ดูก่อนเพื่อน!")
-
-# --- DISPLAY ALL BOOKMARKS SUMMARY TABLE AT THE BOTTOM ---
-if st.session_state.bookmarks:
-    st.markdown("---")
-    st.markdown("## 📊 📋 ตารางสรุปรายการ Bookmark หุ้นทั้งหมด (Portfolio Watchlist)")
-    
-    summary_data = []
-    for tkr, data in st.session_state.bookmarks.items():
-        try:
-            live_df = yf.download(tkr, period="2d", interval="1d", progress=False)
-            if not live_df.empty:
-                if isinstance(live_df.columns, pd.MultiIndex):
-                    live_df.columns = live_df.columns.droplevel(1)
-                live_close = float(live_df['Close'].iloc[-1])
-            else:
-                live_close = data['bookmark_price']
-        except:
-            live_close = data['bookmark_price']
-            
-        bm_price = data['bookmark_price']
-        target_p = data['target_price']
-        pct_change = round(((live_close - bm_price) / bm_price) * 100, 2)
-        target_upside = round(((target_p - live_close) / live_close) * 100, 2)
-        
-        summary_data.append({
-            'Ticker': tkr,
-            'วันที่บันทึก': data['date'],
-            'ราคา ณ วันเริ่มติ๊ก ($)': bm_price,
-            'ราคาเป้าหมายขาย ($)': target_p,
-            'ราคาปิดล่าสุด ($)': live_close,
-            '% เปลี่ยนแปลง (vs วันติ๊ก)': f"{pct_change:+.2f}%",
-            'Upside ถึงเป้า (%)': f"{target_upside:+.2f}%"
-        })
-        
-    if summary_data:
-        df_summary = pd.DataFrame(summary_data)
-        st.dataframe(df_summary, use_container_width=True)
