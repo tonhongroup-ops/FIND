@@ -101,55 +101,74 @@ def calculate_timeframe_metrics(df):
         '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40
     }
     results = {}
-    current_close = df['Close'].iloc[-1]
     
-    # คำนวณ Volume เฉลี่ยภาพรวมทั้งหมดของ dataframe (ย้อนหลัง 3 เดือน) เพื่อใช้เป็น Baseline อ้างอิงรายตัว
-    baseline_full_avg = df['Volume'].mean()
+    try:
+        current_close = float(df['Close'].iloc[-1])
+        baseline_full_avg = float(df['Volume'].mean())
+    except:
+        return {}, 0.0
 
     for label, days in timeframes.items():
-        sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
-        high_max = sub_df['High'].max()
-        low_min = sub_df['Low'].min()
-        start_date = sub_df.index[0].strftime('%Y-%m-%d')
-        
-        high_pct = round(((high_max - current_close) / current_close) * 100, 1)
-        low_pct = round(((low_min - current_close) / current_close) * 100, 1)
-        total_range_pct = round(((high_max - low_min) / current_close) * 100, 1)
-        
         try:
-            hist_sub = sub_df.copy()
-            hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
-            poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
-            poc_price = round(float(poc_row.mid), 2) if pd.notna(poc_row) else round(current_close, 2)
-        except:
-            poc_price = round(current_close, 2)
+            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
+            high_max = float(sub_df['High'].max())
+            low_min = float(sub_df['Low'].min())
+            start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
+            
+            high_pct = round(((high_max - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            low_pct = round(((low_min - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            total_range_pct = round(((high_max - low_min) / current_close) * 100, 1) if current_close > 0 else 0.0
+            
+            # คำนวณ POC แบบดัก Error ป้องกันพัง ถ้าคำนวณไม่ได้ให้คืนค่าเป็น None หรือ 0
+            poc_price = None
+            try:
+                hist_sub = sub_df.copy()
+                hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
+                poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
+                if pd.notna(poc_row):
+                    poc_price = round(float(poc_row.mid), 2)
+            except:
+                poc_price = None
+            
+            if poc_price is None:
+                poc_price = round(current_close, 2)
 
-        # Vol Spike เปรียบเทียบระหว่างช่วงเวลานั้นกับช่วงก่อนหน้าของตัวมันเอง
-        if len(df) >= (days * 2):
-            recent_vol_avg = df.tail(days)['Volume'].mean()
-            previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
-            vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1) if previous_vol_avg > 0 else 0.0
-        elif len(sub_df) >= 2 and days == 1:
-            latest_vol = sub_df['Volume'].iloc[-1]
-            prev_vol = sub_df['Volume'].iloc[-2]
-            vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1) if prev_vol > 0 else 0.0
-        else:
+            # Vol Spike เปรียบเทียบ
             vol_spike_today_pct = 0.0
+            if len(df) >= (days * 2):
+                recent_vol_avg = df.tail(days)['Volume'].mean()
+                previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
+                if previous_vol_avg > 0:
+                    vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1)
+            elif len(sub_df) >= 2 and days == 1:
+                latest_vol = sub_df['Volume'].iloc[-1]
+                prev_vol = sub_df['Volume'].iloc[-2]
+                if prev_vol > 0:
+                    vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1)
 
-        # Vol Period Change เทียบวอลุ่มเฉลี่ยช่วงเวลานั้นกับ Baseline เฉลี่ยระยะยาวของตัวมันเอง
-        sub_period_avg = sub_df['Volume'].mean()
-        if baseline_full_avg > 0:
-            vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
-        else:
+            # Vol Period Change
             vol_period_change_pct = 0.0
+            sub_period_avg = sub_df['Volume'].mean()
+            if baseline_full_avg > 0:
+                vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
+            
+            results[label] = {
+                'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
+                'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
+                'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct
+            }
+        except:
+            results[label] = {
+                'start_date': None, 'high': 0.0, 'low': 0.0,
+                'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
+                'poc_price': None, 'vol_spike_today': 0.0, 'vol_period_change': 0.0
+            }
         
-        results[label] = {
-            'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
-            'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
-            'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct
-        }
+    try:
+        rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
+    except:
+        rsi_2m_avg = 0.0
         
-    rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
     return results, rsi_2m_avg
 
 def calculate_rsi(series, period=14):
@@ -159,7 +178,12 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + (gain / loss)))
 
 def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_period_change, rsi_2m_avg, tf_data, strategy_mode):
-    poc_1m = tf_data.get('1 เดือน', {}).get('poc_price', 0)
+    try:
+        poc_1m = tf_data.get('1 เดือน', {}).get('poc_price', 0)
+        if poc_1m is None:
+            poc_1m = 0
+    except:
+        poc_1m = 0
 
     if "สะสม" in strategy_mode:
         status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบ / Smart Money Accumulation Zone]**"
@@ -221,21 +245,21 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
             latest_close = float(df['Close'].iloc[-1])
             
             recent = df.tail(20).copy()
-            high_max = recent['High'].max()
-            low_min = recent['Low'].min()
-            range_pct = (high_max - low_min) / latest_close
+            high_max = float(recent['High'].max())
+            low_min = float(recent['Low'].min())
+            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
             
             recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
-            last_vol = recent['Volume'].iloc[-1]
-            last_vol_ma = recent['Vol_MA'].iloc[-1]
-            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if pd.notna(last_vol_ma) and last_vol_ma > 0 else 0.0
+            last_vol = float(recent['Volume'].iloc[-1])
+            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
             is_matched = False
             if "สะสม" in strategy_mode:
                 if range_pct <= 0.22 and 30 <= latest_rsi <= 70:
                     is_matched = True
             else:
-                vol_spike = last_vol >= (last_vol_ma * 1.10) if pd.notna(last_vol_ma) else False
+                vol_spike = last_vol >= (last_vol_ma * 1.10) if last_vol_ma > 0 else False
                 if range_pct >= 0.03 and latest_rsi >= 40 and vol_spike:
                     is_matched = True
 
@@ -284,12 +308,13 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
                 for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
                         info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
                         tf_rows.append({
-                            'ช่วงเวลา': tf_name, 'วันที่เริ่มต้น': info['start_date'],
+                            'ช่วงเวลา': tf_name, 'วันที่เริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
                             'ราคาสูงสุด (High)': f"${info['high']} ({info['high_pct']:+.1f}%)",
                             'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
                             'กรอบ (Range)': f"{info['range_pct']}%",
-                            'POC (ฐานราคาหนาแน่นสุด)': f"${info['poc_price']}",
+                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
                             '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
                             '📈 Vol เฉลี่ยเทียบอดีต': f"{info['vol_period_change']:+.1f}%"
                         })
