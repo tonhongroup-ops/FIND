@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Deep Innovation, Utilities & Swing Trading Radar Pro", layout="wide")
+st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation, Utilities & Swing Trading Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค S&P 500 และกลุ่มการเงินแกร่ง")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (with Bookmark Tracker)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, AI Infrastructure, สาธารณูปโภค พร้อมระบบ Bookmark ติดตามราคาเป้าหมาย")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -85,12 +85,8 @@ def get_comprehensive_universe():
 
 def calculate_timeframe_metrics(df):
     timeframes = {
-        'เมื่อวันก่อน': 1, 
-        '3 วัน': 3, 
-        '1 อาทิตย์': 5, 
-        '2 อาทิตย์': 10, 
-        '1 เดือน': 20, 
-        '2 เดือน': 40
+        'เมื่อวันก่อน': 1, '3 วัน': 3, '1 อาทิตย์': 5, 
+        '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40
     }
     results = {}
     current_close = df['Close'].iloc[-1]
@@ -138,6 +134,10 @@ def calculate_rsi(series, period=14):
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     return 100 - (100 / (1 + (gain / loss)))
+
+# Initialize Session State for Bookmarks
+if 'bookmarks' not in st.session_state:
+    st.session_state.bookmarks = {} # Format: {ticker: {'bookmark_price': val, 'target_price': val, 'date': str}}
 
 universe = get_comprehensive_universe()
 
@@ -199,15 +199,15 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                upside = round(float(np.random.uniform(7.0, 15.0)), 1)
-                target_price = round(latest_close * (1 + upside / 100.0), 2)
+                default_upside = 10.0
+                default_target = round(latest_close * (1 + default_upside / 100.0), 2)
                 tp1_price = round(latest_close * 1.05, 2)
                 
                 matched_data.append({
                     'Ticker': ticker, 'Moat': moat_story,
                     'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'Upside': upside, 'Target': target_price, 'TP1': tp1_price,
+                    'TF_Data': tf_data, 'Default_Target': default_target, 'TP1': tp1_price,
                     'Low_Min': round(low_min, 2)
                 })
         except:
@@ -221,20 +221,53 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
         st.markdown("---")
         
         for item in matched_data:
-            expander_title = f"🟢 📌 [{item['Ticker']}] | ราคา: ${item['Close']} | กรอบราคา: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
+            ticker = item['Ticker']
+            current_close = item['Close']
+            
+            expander_title = f"🟢 📌 [{ticker}] | ราคา: ${current_close} | กรอบราคา: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
             
             with st.expander(expander_title, expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 ราคาปัจจุบัน", f"${item['Close']}")
+                col1.metric("💰 ราคาปัจจุบัน", f"${current_close}")
                 col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
                 col3.metric("📊 ความกว้างกรอบ (1M)", f"{item['Range_Pct']}%")
-                col4.metric("🎯 เป้ากำไรสูงสุด", f"+{item['Upside']}%")
+                col4.metric("🎯 เป้าแนะนำ (TP1 5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
                 st.markdown(f"🔬 **จุดแข็งสิทธิบัตร, IP Moat & Ecosystem:** **{item['Moat']}**")
                 st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่าง)")
-                st.markdown(f"🎯 **จุดขายทำกำไร:** 🔴 **${item['TP1']} (เป้าแรก 5%)** | 🚀 **${item['Target']} (+{item['Upside']}%)**")
                 
+                # --- BOOKMARK FEATURE ---
+                st.markdown("### 📌 ระบบ Bookmark & บันทึกเป้าหมายทำกำไร")
+                is_bookmarked = ticker in st.session_state.bookmarks
+                
+                col_bm1, col_bm2, col_bm3 = st.columns([1, 2, 2])
+                with col_bm1:
+                    bookmark_checked = st.checkbox("ติ๊กเก็บเข้าพอร์ต", value=is_bookmarked, key=f"bm_check_{ticker}")
+                
+                default_target_val = st.session_state.bookmarks[ticker]['target_price'] if is_bookmarked else item['Default_Target']
+                with col_bm2:
+                    target_input = st.number_input("ราคาที่คิดว่าจะขายทำกำไร ($)", value=float(default_target_val), step=0.5, key=f"target_input_{ticker}")
+                
+                if bookmark_checked:
+                    if not is_bookmarked:
+                        st.session_state.bookmarks[ticker] = {
+                            'bookmark_price': current_close,
+                            'target_price': target_input,
+                            'date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')
+                        }
+                        st.success(f"บันทึก Bookmark หุ้น {ticker} ที่ราคา ${current_close} เรียบร้อย!")
+                        st.rerun()
+                    else:
+                        # Update target price if changed
+                        st.session_state.bookmarks[ticker]['target_price'] = target_input
+                else:
+                    if is_bookmarked:
+                        del st.session_state.bookmarks[ticker]
+                        st.info(f"ลบ Bookmark หุ้น {ticker} ออกจากพอร์ตแล้ว")
+                        st.rerun()
+
+                st.markdown("---")
                 st.markdown("### ⏱️ เปรียบเทียบกรอบราคา, ราคาหนาแน่นสุด (POC) และ % Volume Change")
                 tf_rows = []
                 for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
@@ -252,3 +285,43 @@ if st.button("🚀 เริ่มคัดกรองหุ้นตามเ�
         st.markdown("---")
     else:
         st.warning("ไม่มีหุ้นตัวไหนใน Sector นี้ผ่านเกณฑ์ในรอบนี้ ลองสลับโหมดกลยุทธ์หรือเปลี่ยน Sector ดูก่อนเพื่อน!")
+
+# --- DISPLAY ALL BOOKMARKS SUMMARY TABLE IN SIDEBAR OR BOTTOM ---
+if st.session_state.bookmarks:
+    st.markdown("---")
+    st.markdown("## 📊 📋 สรุปรายการ Bookmark หุ้นที่บันทึกไว้ (Portfolio Watchlist)")
+    st.markdown("> *ตารางเปรียบเทียบราคาตอนเริ่มติ๊กเก็บ, ราคาเป้าหมายขายทำกำไร, ราคาปิดตลาดล่าสุด และ % การเปลี่ยนแปลงเทียบกับตลาด*")
+    
+    summary_data = []
+    for tkr, data in st.session_state.bookmarks.items():
+        try:
+            live_df = yf.download(tkr, period="2d", interval="1d", progress=False)
+            if not live_df.empty:
+                if isinstance(live_df.columns, pd.MultiIndex):
+                    live_df.columns = live_df.columns.droplevel(1)
+                live_close = float(live_df['Close'].iloc[-1])
+            else:
+                live_close = data['bookmark_price']
+        except:
+            live_close = data['bookmark_price']
+            
+        bm_price = data['bookmark_price']
+        target_p = data['target_price']
+        
+        # % Change compared to market close vs bookmark price
+        pct_change = round(((live_close - bm_price) / bm_price) * 100, 2)
+        target_upside = round(((target_p - live_close) / live_close) * 100, 2)
+        
+        summary_data.append({
+            'Ticker': tkr,
+            'วันที่บันทึก': data['date'],
+            'ราคา ณ วันเริ่มติ๊ก ($)': bm_price,
+            'ราคาเป้าหมายขาย ($)': target_p,
+            'ราคาปิดล่าสุด ($)': live_close,
+            '% เปลี่ยนแปลง (vs วันติ๊ก)': f"{pct_change:+.2f}%",
+            'Upside ถึงเป้า (%)': f"{target_upside:+.2f}%"
+        })
+        
+    if summary_data:
+        df_summary = pd.DataFrame(summary_data)
+        st.dataframe(df_summary.style.highlight_greater(subset=['% เปลี่ยนแปลง (vs วันติ๊ก)'], color='lightgreen'), use_container_width=True)
