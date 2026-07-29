@@ -4,10 +4,10 @@ import numpy as np
 import yfinance as yf
 import concurrent.futures
 
-st.set_page_config(page_title="Multi-Timeframe Innovation & Patent Sniper", layout="wide")
+st.set_page_config(page_title="Pro Innovation & Patent Sniper", layout="wide")
 
-st.title("🎯 Multi-Timeframe Innovation & Patent Sniper")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรมและสิทธิบัตร 100 ตัว | เจาะลึก Multi-Timeframe POC (1สัปดาห์, 1เดือน, 2เดือน) & % Volume Change")
+st.title("🎯 Pro Innovation & Patent Sniper (Multi-Timeframe & Sector Matrix)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรเปลี่ยนโลก 100 ตัว | เจาะลึก Multi-Timeframe POC (1สัปดาห์, 1เดือน, 2เดือน) และ % Volume Change")
 
 sectors_universe = {
     "💻 1. AI, Semiconductors & Cloud Infra": [
@@ -49,7 +49,7 @@ for sec_name, tickers in sectors_universe.items():
         all_tickers.append(t)
         ticker_to_sector[t] = sec_name
 
-st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์ Multi-Timeframe")
+st.sidebar.markdown("### ⚙️ ควบคุมระบบสแกนหุ้น 100 ตัว")
 selected_sec_filter = st.sidebar.selectbox("📂 กรองดูตาม Sector:", ["ทั้งหมด 100 ตัว"] + list(sectors_universe.keys()))
 vol_change_threshold = st.sidebar.slider("🔥 กำหนด %Vol Change ขั้นต่ำเทียบ MA20", min_value=50, max_value=300, value=100, step=25)
 
@@ -83,7 +83,6 @@ def analyze_single_stock(ticker):
                 pass
             return round(float(sub_df['Close'].mean()), 2)
 
-        # กำหนดหลายไทม์เฟรม: 1 สัปดาห์ (5 วัน), 1 เดือน (20 วัน), 2 เดือน (40 วัน)
         df_1w = df.tail(5)
         df_1m = df.tail(20)
         df_2m = df.tail(40)
@@ -111,8 +110,8 @@ def analyze_single_stock(ticker):
     except Exception:
         return None
 
-if st.button("🚀 เริ่มรันเรดาร์ Multi-Timeframe 100 ตัวรวด!"):
-    with st.spinner("กำลังประมวลผลข้อมูลราคา Volume และ Multi-Timeframe POC ของหุ้น 100 ตัว..."):
+if st.button("🚀 เริ่มรันเรดาร์สแกนหุ้นนวัตกรรม 100 ตัวรวดดด!"):
+    with st.spinner("กำลังดึงข้อมูลและคำนวณ Multi-Timeframe POC + %Vol Change ของหุ้น 100 ตัว..."):
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
             future_to_ticker = {executor.submit(analyze_single_stock, t): t for t in all_tickers}
@@ -122,27 +121,27 @@ if st.button("🚀 เริ่มรันเรดาร์ Multi-Timeframe 10
                     results.append(res)
         
         df_result = pd.DataFrame(results)
-        st.session_state['multi_tf_data'] = df_result
-        st.success(f"สแกนสำเร็จ! ดึงข้อมูลสำเร็จ {len(df_result)} จาก 100 ตัว")
+        st.session_state['scan_data_100'] = df_result
+        st.success(f"สแกนสำเร็จเรียบร้อย! ดึงข้อมูลสำเร็จ {len(df_result)} จาก 100 ตัว")
 
-if 'multi_tf_data' in st.session_state and not st.session_state['multi_tf_data'].empty:
-    df_display = st.session_state['multi_tf_data']
+if 'scan_data_100' in st.session_state and not st.session_state['scan_data_100'].empty:
+    df_display = st.session_state['scan_data_100']
     
     if selected_sec_filter != "ทั้งหมด 100 ตัว":
         df_display = df_display[df_display['Sector'] == selected_sec_filter]
 
     st.markdown("---")
-    st.markdown(f"### 📊 ตาราง Multi-Timeframe POC & Volume Matrix (แสดง {len(df_display)} ตัว)")
+    st.markdown(f"### 📊 ตารางสรุป Multi-Timeframe POC & %Vol Change (แสดง {len(df_display)} ตัว)")
     st.dataframe(df_display, use_container_width=True)
     
     st.markdown("---")
-    st.markdown("### 🔥 หุ้นนวัตกรรมเข้าข่าย Volume พุ่งแรง + เกาะโซนสะสม Multi-Timeframe")
+    st.markdown("### 🔥 หุ้นนวัตกรรมที่เข้าข่าย Volume พุ่งแรงผิดปกติ (Volume Spike Anomaly)")
     filtered_spike = df_display[df_display['Vol_%_Change'] >= vol_change_threshold]
     
     if not filtered_spike.empty:
-        st.success(f"พบหุ้นที่วอลุ่มพุ่งเกินเกณฑ์จำนวน **{len(filtered_spike)} ตัว** พร้อมลุยเล่นรอบตามข่าวสิทธิบัตรและนวัตกรรม:")
+        st.success(f"พบหุ้นนวัตกรรมและสิทธิบัตรที่วอลุ่มพุ่งเกินเกณฑ์จำนวน **{len(filtered_spike)} ตัว**:")
         st.dataframe(filtered_spike, use_container_width=True)
     else:
-        st.info("ไม่มีหุ้นตัวไหนที่ Volume พุ่งถึงเกณฑ์ในรอบนี้ ลองปรับลด %Vol Change ด้านซ้ายดูเพื่อน")
+        st.info("ไม่มีหุ้นตัวไหนในกลุ่มที่ Volume พุ่งเกินเกณฑ์ที่ตั้งไว้ในรอบนี้ ลองปรับลด %Vol Change ดูเพื่อน")
 else:
-    st.info("💡 กดปุ่มสีเขียว **'เริ่มรันเรดาร์ Multi-Timeframe 100 ตัวรวด!'** ด้านบน เพื่อเปิดระบบสแกนเต็มรูปแบบบนเซิร์ฟเวอร์ของมึงตอนนี้เลยเพื่อน!")
+    st.info("💡 กดปุ่มสีเขียว **'เริ่มรันเรดาร์สแกนหุ้นนวัตกรรม 100 ตัวรวดดด!'** ด้านบน เพื่อให้เซิร์ฟเวอร์ดึงข้อมูลและคำนวณ Multi-Timeframe POC ทั้ง 10 Sector สดๆ ได้เลยเพื่อน!")
