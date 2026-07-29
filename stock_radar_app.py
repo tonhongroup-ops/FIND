@@ -3,329 +3,130 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Ultimate S&P500 Innovation Swing Radar", layout="wide")
+st.set_page_config(page_title="Ultimate Multi-Timeframe Volume & POC Sniper Pro", layout="wide")
 
-st.title("🎯 Ultimate S&P500 Innovation & Patent Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม 300 ตัวใน S&P 500 | วิเคราะห์งบการเงินเชิงลึก + สิทธิบัตร IP Moat + Multi-POC Swing Strategy")
+st.title("🎯 Ultimate Multi-Timeframe Volume & POC Sniper Pro")
+st.markdown("### เรดาร์เจาะลึก Volume รายวันถึงกรอบ 2 เดือน | แกะรอย Smart Money & Multi-POC Matrix เพื่อความมั่นใจสูงสุด")
 
-@st.cache_data(ttl=86400)
-def get_sp500_300_innovation_universe():
-    universe = {
-        "💻 Information Technology & Semiconductors (ชิป AI, คลาวด์ & ระบบประมวลผล)": {
-            'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาด',
-            'AAPL': 'Ecosystem ฮาร์ดแวร์และบริการ, สิทธิบัตรชิป Apple Silicon',
-            'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI',
-            'AVGO': 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon สำหรับดาต้าเซ็นเตอร์',
-            'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก',
-            'QCOM': 'สิทธิบัตรหลักเทคโนโลยีสื่อสารไร้สาย 5G/6G และ Edge AI ชิป',
-            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI',
-            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก',
-            'LRCX': 'เครื่องมือและสิทธิบัตรกระบวนการผลิตเซมิคอนดักเตอร์ระดับนาโน',
-            'KLAC': 'ระบบตรวจสอบและควบคุมคุณภาพเวเฟอร์เซมิคอนดักเตอร์ขั้นสูง',
-            'TXN': 'ชิปอนาล็อกและระบบประมวลผลฝังตัวสำหรับยานยนต์และอุตสาหกรรม',
-            'ADI': 'เซมิคอนดักเตอร์แปลงสัญญาณและการประมวลผลสัญญาณดิจิทัล',
-            'INTC': 'นวัตกรรมโรงหล่อชิป (Foundry) และหน่วยประมวลผล PC/Server',
-            'IBM': 'ควอนตัมคอมพิวติ้ง, ไฮบริดคลาวด์ และ AI องค์กร (Watsonx)',
-            'ORCL': 'คลาวด์ฐานข้อมูลองค์กรความเร็วสูงและโครงสร้างพื้นฐาน AI',
-            'CRM': 'Enterprise Cloud CRM & AI Agent ผูกขาดฐานลูกค้าองค์กรทั่วโลก',
-            'NOW': 'แพลตฟอร์ม Workflow Software อัตโนมัติสำหรับองค์กรขนาดใหญ่',
-            'ADBE': 'ซอฟต์แวร์สร้างสรรค์ดิจิทัล, AI Gen (Firefly) และเอกสารดิจิทัล',
-            'SNPS': 'ซอฟต์แวร์อัตโนมัติออกแบบอิเล็กทรอนิกส์ (EDA) และสิทธิบัตรชิป',
-            'CDNS': 'เครื่องมือออกแบบวงจรรวมและไอพีเซมิคอนดักเตอร์ขั้นสูง',
-            'ANSS': 'ซอฟต์แวร์วิศวกรรมจำลองสถานการณ์ (Simulation) ชั้นนำของโลก',
-            'PLTR': 'ซอฟต์แวร์วิเคราะห์ข้อมูล Big Data และ AI ทางทหาร/องค์กร',
-            'PANW': 'ผู้นำนวัตกรรมระบบความปลอดภัยไซเบอร์และ AI Firewall',
-            'CRWD': 'แพลตฟอร์ม Cloud Security ป้องกันภัยคุกคามทางไซเบอร์อัตโนมัติ',
-            'FTNT': 'อุปกรณ์เครือข่ายความปลอดภัยและสิทธิบัตรชิปประมวลผลความปลอดภัย',
-            'ANET': 'สวิตช์เครือข่ายความเร็วสูงพิเศษสำหรับ Data Center และ AI คลาวด์',
-            'CSRO': 'อุปกรณ์เครือข่ายสื่อสารองค์กรและระบบคลาวด์คอมพิวติ้ง',
-            'HPQ': 'ฮาร์ดแวร์คอมพิวเตอร์และนวัตกรรมการพิมพ์ระดับองค์กร',
-            'HPE': 'เซิร์ฟเวอร์คลาวด์, Edge Computing และระบบประมวลผลองค์กร',
-            'KEYS': 'เครื่องมือวัดและทดสอบทางอิเล็กทรอนิกส์สำหรับ 5G/6G และยานยนต์',
-            'GLW': 'นวัตกรรมกระจกไฟเบอร์ออพติกและวัสดุแก้วพิเศษขั้นสูง',
-            'TYL': 'ซอฟต์แวร์โซลูชันสำหรับภาครัฐและระบบดิจิทัลแบงก์กิ้ง'
-        },
-        "🤖 Smart Manufacturing, Industrial Automation & Robotics (โรงงานอัจฉริยะ & หุ่นยนต์)": {
-            'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus',
-            'GE': 'นวัตกรรมการบินระดับโลก, เทคโนโลยีเครื่องยนต์อากาศยานล้ำสมัย',
-            'GEV': 'เทคโนโลยีโครงข่ายไฟฟ้าอัจฉริยะ กังหันลม และระบบขับเคลื่อนหลัก',
-            'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center',
-            'EMR': 'ระบบอัตโนมัติในกระบวนการผลิตอุตสาหกรรมและวาล์วอัจฉริยะ',
-            'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center',
-            'PH': 'เทคโนโลยีการเคลื่อนที่และการควบคุม (Motion & Control) อุตสาหกรรม',
-            'ROK': 'ซอฟต์แวร์และฮาร์ดแวร์ระบบอัตโนมัติสำหรับโรงงานอัจฉริยะ',
-            'HON': 'ระบบอัตโนมัติในอุตสาหกรรม, หุ่นยนต์คลังสินค้าและอาคารอัจฉริยะ',
-            'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และสมาร์ทฟาร์มแม่นยำสูง',
-            'CMI': 'นวัตกรรมเครื่องยนต์ดีเซลสะอาด, ระบบไฮบริดและเซลล์เชื้อเพลิงไฮโดรเจน',
-            'ITW': 'ตัวยึดและระบบประกอบอุตสาหกรรมที่มีสิทธิบัตรคุ้มครองสูง',
-            'DOV': 'ผลิตภัณฑ์อุตสาหกรรมเฉพาะทางและระบบปั๊มความดันสูง',
-            'XYL': 'เทคโนโลยีจัดการน้ำอัจฉริยะและระบบบำบัดน้ำเสียระดับโลก',
-            'FAST': 'ระบบโลจิสติกส์อุตสาหกรรมอัตโนมัติและคลังสินค้าอัจฉริยะ',
-            'ODFL': 'เครือข่ายการขนส่งสินค้าควบคุมอุณหภูมิและโลจิสติกส์แม่นยำสูง',
-            'URI': 'อุปกรณ์ก่อสร้างอัจฉริยะและระบบจัดการฟリートเครื่องจักร',
-            'PWR': 'โครงสร้างพื้นฐานพลังงานไฟฟ้าและระบบส่งกำลังอัจฉริยะ',
-            'TT': 'ระบบปรับอากาศและจัดการพลังงานอาคารอัจฉริยะ (HVAC)',
-            'CPRT': 'แพลตฟอร์มประมูลซากรถยนต์อัจฉริยะและฐานข้อมูลโลจิสติกส์'
-        },
-        "🧬 Health Care, Bio-Tech & Medical Robotics (การแพทย์ล้ำสมัย, ไบโอเทค & หุ่นยนต์ผ่าตัด)": {
-            'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
-            'UNH': 'แพลตฟอร์มบริการสุขภาพครบวงจรและเทคโนโลยีวิเคราะห์ข้อมูลสุขภาพ',
-            'JNJ': 'อุปกรณ์การแพทย์ขั้นสูง, ยาชีววัตถุและเวชภัณฑ์ระดับโลก',
-            'ABBV': 'ยารักษาโรคภูมิคุ้มกันบกพร่อง, เนื้องอกและนวัตกรรมภูมิคุ้มกันวิทยา',
-            'MRK': 'นวัตกรรมภูมิคุ้มกันบำบัดมะเร็ง (Keytruda) และวัคซีนป้องกันโรค',
-            'TMO': 'เครื่องมือวิเคราะห์ทางวิทยาศาสตร์, อุปกรณ์ห้องปฏิบัติการและพันธุศาสตร์',
-            'ABT': 'อุปกรณ์การแพทย์ตรวจวัดระดับน้ำตาลต่อเนื่องและเครื่องมือวินิจฉัยโรค',
-            'DHR': 'เทคโนโลยีชีวภาพ, อุปกรณ์วิเคราะห์พันธุกรรมและกระบวนการผลิตยา',
-            'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลผูกขาดตลาดร้อยเปอร์เซ็นต์)',
-            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)',
-            'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
-            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง',
-            'GILD': 'นวัตกรรมยารักษาโรคติดเชื้อไวรัส, HIV และภูมิคุ้มกันบำบัดมะเร็ง',
-            'BSX': 'อุปกรณ์การแพทย์โรคหัวใจ, หลอดเลือดและระบบทางเดินอาหารขั้นสูง',
-            'MDT': 'เครื่องมือแพทย์กระตุ้นหัวใจ, ปั๊มอินซูลินและเทคโนโลยีผ่าตัด',
-            'SYK': 'อุปกรณ์การแพทย์กระดูกและข้อ, หุ่นยนต์ช่วยผ่าตัดข้อเข่า/สะโพก',
-            'ZTS': 'นวัตกรรมเวชภัณฑ์และวัคซีนสำหรับสุขภาพสัตว์ระดับโลก',
-            'BDX': 'อุปกรณ์ทางการแพทย์, เข็มฉีดยาอัจฉริยะและระบบวินิจฉัยโรค',
-            'ILMN': 'เทคโนโลยีถอดรหัสพันธุกรรมขั้นสูง (Sequencing) ผูกขาดตลาด',
-            'DXCM': 'ระบบตรวจวัดระดับน้ำตาลในเลือดแบบต่อเนื่องไร้สาย (CGM)',
-            'BAX': 'ผลิตภัณฑ์เทคโนโลยีการแพทย์โรคไตและสารน้ำในโรงพยาบาล',
-            'WAT': 'เครื่องมือโครมาโทกราฟีและวิเคราะห์เคมีชีวภาพความแม่นยำสูง',
-            'CRL': 'บริการวิจัยพรีคลินิกและพัฒนาทดสอบยาให้กับบริษัทยาสากล'
-        },
-        "⚡ Power, Smart Grid & Clean Energy (พลังงาน AI, โครงข่ายอัจฉริยะ & นิวเคลียร์)": {
-            'NEE': 'ยักษ์ใหญ่พลังงานสะอาดและโครงสร้างพื้นฐานกริดไฟฟ้าป้อน AI',
-            'SO': 'สาธารณูปโภคไฟฟ้าขนาดใหญ่และนวัตกรรมพลังงานนิวเคลียร์/ก๊าซ',
-            'DUK': 'โครงข่ายไฟฟ้าอัจฉริยะและระบบพลังงานสะอาดสำหรับองค์กร',
-            'CEG': 'ผู้ผลิตพลังงานคาร์บอนต่ำและโรงไฟฟ้านิวเคลียร์รายใหญ่ป้อน AI',
-            'PCG': 'โครงข่ายไฟฟ้าอัจฉริยะและระบบป้องกันไฟป่าพลังงานแสงอาทิตย์',
-            'AEP': 'ระบบส่งไฟฟ้าแรงสูงและโครงข่ายพลังงานอัจฉริยะ',
-            'SRE': 'โครงสร้างพื้นฐานก๊าซธรรมชาติเหลวและพลังงานสะอาดระดับภูมิภาค',
-            'EXC': 'โครงข่ายจำหน่ายไฟฟ้าอัจฉริยะและพลังงานสะอาด',
-            'XEL': 'ระบบพลังงานลม, แสงอาทิตย์และกริดไฟฟ้าอัจฉริยะ',
-            'ED': 'ระบบจำหน่ายไฟฟ้าและพลังงานสะอาดในเขตเมืองหลวง',
-            'WEC': 'สาธารณูปโภคพลังงานสะอาดและระบบกักเก็บพลังงาน',
-            'ES': 'โครงข่ายพลังงานไฟฟ้าอัจฉริยะและสายส่งพลังงานสีเขียว',
-            'ETR': 'ระบบส่งกำลังไฟฟ้าและพลังงานนิวเคลียร์สะอาด',
-            'FE': 'โครงข่ายจำหน่ายไฟฟ้าและระบบจัดการพลังงาน',
-            'PEG': 'สาธารณูปโภคพลังงานสะอาดและโรงไฟฟ้านิวเคลียร์',
-            'AEE': 'ระบบพลังงานหมุนเวียนและกริดไฟฟ้าอัจฉริยะ',
-            'CMS': 'พลังงานสะอาด, ลม, แสงอาทิตย์และระบบจำหน่ายก๊าซ',
-            'CNP': 'โครงสร้างพื้นฐานพลังงานไฟฟ้าและระบบสาธารณูปโภค',
-            'EVRG': 'พลังงานหมุนเวียนและระบบส่งไฟฟ้าประสิทธิภาพสูง',
-            'LNT': 'พลังงานสะอาดและระบบผลิตไฟฟ้าคาร์บอนต่ำ'
-        },
-        "💰 Financials, Fintech & High-Moat Assets (การเงิน, ฟินเทค & โครงสร้างแกร่ง)": {
-            'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
-            'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค (Global Tollbooth)',
-            'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
-            'BAC': 'ธนาคารพาณิชย์ขนาดใหญ่และระบบดิจิทัลแบงก์กิ้งครบวงจร',
-            'WFC': 'บริการทางการเงินและสินเชื่อที่อยู่อาศัยรายใหญ่',
-            'GS': 'วาณิชธนกิจระดับโลก, การลงทุนและตลาดทุนสถาบัน',
-            'MS': 'วาณิชธนกิจ, บริหารความมั่งคั่งและแพลตฟอร์มการลงทุนออนไลน์',
-            'BLK': 'ผู้จัดการกองทุนที่ใหญ่ที่สุดในโลก (BlackRock / Aladdin Platform)',
-            'SPGI': 'ผู้ให้บริการจัดอันดับความน่าเชื่อถือและดัชนีตลาดการเงินโลก',
-            'MCO': 'บริการข้อมูลเครดิต, การประเมินความเสี่ยงและเรตติ้งระดับโลก',
-            'ICE': 'ตลาดหลักทรัพย์นิวยอร์กและแพลตฟอร์มซื้อขายสัญญาอนุพันธ์ดิจิทัล',
-            'CME': 'ตลาดซื้อขายสัญญาฟิวเจอร์สและอนุพันธ์ทางการเงินที่ใหญ่ที่สุด',
-            'PGR': 'นวัตกรรมประกันภัยยานยนต์และการวิเคราะห์ความเสี่ยงด้วยข้อมูล',
-            'CB': 'บริษัทประกันภัยทรัพย์สินและวินาศภัยระดับโลกที่มีกระแสเงินสดแกร่ง',
-            'MMC': 'บริการปรึกษาความเสี่ยง, การประกันภัยต่อและทุนมนุษย์',
-            'AON': 'แพลตฟอร์มบริหารความเสี่ยงระดับองค์กรและประกันภัย',
-            'AJG': 'บริการนายหน้าประกันภัยและที่ปรึกษาการบริหารความเสี่ยง',
-            'TRV': 'ประกันภัยทรัพย์สินองค์กรและบุคคลที่มีเสถียรภาพสูง',
-            'AFL': 'ประกันสุขภาพและอุบัติเหตุที่มีฐานลูกค้ามั่นคง',
-            'MET': 'ประกันชีวิตและบริการจัดการกองทุนสำรองเลี้ยงชีพ',
-            'PRU': 'บริการทางการเงิน, ประกันชีวิตและบริหารสินทรัพย์',
-            'AXP': 'เครือข่ายบัตรเครดิตกลุ่มลูกค้ากำลังซื้อสูง (High Net Worth)'
-        },
-        "🌐 Consumer, Platforms & Digital Ecosystem (สินค้าอุปโภค, แพลตฟอร์ม & อีคอมเมิร์ซ)": {
-            'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
-            'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
-            'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
-            'NFLX': 'แพลตฟอร์มสตรีมมิ่งความบันเทิงระดับโลกและอัลกอริทึมแนะนำเนื้อหา',
-            'DIS': 'Ecosystem สื่อบันเทิง, สวนสนุกและแพลตฟอร์มสตรีมมิ่ง',
-            'WMT': 'ค้าปลีกยักษ์ใหญ่ระดับโลก, โลจิสติกส์อัตโนมัติและอีคอมเมิร์ซ',
-            'COST': 'โมเดลธุรกิจสมาชิกลูกค้าประจำที่มีอัตราการซื้อซ้ำสูงลิ่ว',
-            'HD': 'แพลตฟอร์มค้าปลีกวัสดุก่อสร้างและระบบห่วงโซ่อุปทานอัจฉริยะ',
-            'LOW': 'ศูนย์จำหน่ายสินค้าปรับปรุงบ้านและโครงสร้างพื้นฐานค้าปลีก',
-            'NKE': 'นวัตกรรมรองเท้ากีฬา, สิทธิบัตรวัสดุและดิจิทัลฟิตเนสแพลตฟอร์ม',
-            'SBUX': 'Ecosystem ร้านกาแฟระดับโลก, โมเดลสมาชิกดิจิทัลและแอปสั่งซื้อ',
-            'MCD': 'แฟรนไชส์อาหารระดับโลก, ระบบไดร์ฟทรูอัจฉริยะและตู้สั่งซื้ออัตโนมัติ',
-            'PG': 'สินค้าอุปโภคบริโภคระดับโลกที่มีสิทธิบัตรนวัตกรรมสูตรสินค้า',
-            'KO': 'Ecosystem เครื่องดื่มระดับโลกและระบบกระจายสินค้าไร้รอยต่อ',
-            'PEP': 'ผลิตภัณฑ์อาหารและเครื่องดื่มระดับโลกที่มีฐานการตลาดแข็งแกร่ง',
-            'PM': 'นวัตกรรมผลิตภัณฑ์ไร้ควันและบุหรี่ไฟฟ้าทางเลือกสุขภาพ',
-            'MO': 'ผู้นำตลาดผลิตภัณฑ์ยาสูบและเงินปันผลสม่ำเสมอ',
-            'CL': 'ผลิตภัณฑ์ดูแลสุขภาพครัวเรือนและส่วนบุคคลระดับสากล',
-            'EL': 'ผลิตภัณฑ์ความงามและเครื่องสำอางพรีเมียมระดับโลก',
-            'KMB': 'กระดาษชำระและผลิตภัณฑ์สุขอนามัยส่วนบุคคลสากล'
-        },
-        "🛢️ Energy, Materials & Industrial Infrastructure (พลังงานฟอสซิล, วัสดุขั้นสูง & เคมีภัณฑ์)": {
-            'XOM': 'ยักษ์ใหญ่พลังงานปิโตรเลียมและเทคโนโลยีการดักจับคาร์บอน (CCS)',
-            'CVX': 'พลังงานสำรวจและผลิตปิโตรเลียมระดับโลกที่มีงบดุลแกร่ง',
-            'COP': 'สำรวจและผลิตน้ำมันดิบและก๊าซธรรมชาติที่มีต้นทุนต่ำ',
-            'EOG': 'การสำรวจพลังงานที่มีประสิทธิภาพสูงและการใช้นวัตกรรมขุดเจาะ',
-            'SLB': 'เทคโนโลยีบริการขุดเจาะน้ำมันและวิศวกรรมบ่อน้ำมันระดับโลก',
-            'MPC': 'โรงกลั่นน้ำมันและระบบกระจายผลิตภัณฑ์ปิโตรเลียม',
-            'PSX': 'การกลั่น, การตลาดและปิโตรเคมีขั้นสูง',
-            'VLO': 'โรงกลั่นน้ำมันเชื้อเพลิงชีวภาพและพลังงานสะอาดทางเลือก',
-            'OXY': 'พลังงานน้ำมันก๊าซและเทคโนโลยีการดักจับคาร์บอนชั้นนำ',
-            'KMI': 'ท่อส่งพลังงานและโครงสร้างพื้นฐานขนส่งน้ำมันก๊าซรายใหญ่',
-            'WMB': 'โครงสร้างพื้นฐานท่อส่งก๊าซธรรมชาติและพลังงานหมุนเวียน',
-            'LIN': 'ก๊าซอุตสาหกรรม, ไฮโดรเจนและสิทธิบัตรเทคโนโลยีเคมีสะอาด',
-            'SHW': 'นวัตกรรมสีเคลือบผิว, สิทธิบัตรเคมีภัณฑ์และวัสดุก่อสร้าง',
-            'APD': 'ก๊าซอุตสาหกรรมสำหรับกระบวนการผลิตอิเล็กทรอนิกส์และไฮโดรเจน',
-            'ECL': 'เทคโนโลยีน้ำ, สุขอนามัยและสารเคมีป้องกันการกัดกร่อนอุตสาหกรรม',
-            'NEM': 'เหมืองแร่ทองคำและโลหะมีค่าระดับโลกที่มีระบบขุดเจาะอัตโนมัติ',
-            'FCX': 'เหมืองทองแดงและโลหะสำคัญสำหรับชิป EV และกริดพลังงาน'
-        }
-    }
-    return universe
+st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้นและ Volume")
+input_ticker = st.sidebar.text_input("🔤 ใส่ชื่อย่อหุ้นที่ต้องการวิเคราะห์ (เช่น ETN, NVDA, ISRG, ROK)", value="ETN")
+volume_spike_multiplier = st.sidebar.slider("🔥 ตัวคูณความผิดปกติของ Volume (เทียบกับ MA20)", min_value=1.5, max_value=5.0, value=2.0, step=0.25,
+                                             help="ค่าสูงแปลว่าต้องเป็นวันที่มีวอลุ่มหนาแน่นกว่าปกติหลายเท่าตัว")
 
-def calculate_multi_timeframe_poc(df):
-    timeframes = {
-        '3 วัน': 3,
-        '1 อาทิตย์': 5,
-        '2 อาทิตย์': 10,
-        '3 อาทิตย์': 15
-    }
-    results = {}
-    current_close = float(df['Close'].iloc[-1])
+st.markdown(f"## 🔬 วิเคราะห์เชิงลึกหุ้นนวัตกรรมและสิทธิบัตร: **[{input_ticker.upper()}]**")
+
+if st.button("🚀 รันเรดาร์วิเคราะห์ Multi-Timeframe Volume & POC"):
+    ticker = input_ticker.upper().strip()
     
-    for label, days in timeframes.items():
+    with st.spinner(f"กำลังดึงข้อมูลและประมวลผล Volume & POC ทุกกรอบเวลาของ {ticker}..."):
         try:
-            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
-            high_max = float(sub_df['High'].max())
-            low_min = float(sub_df['Low'].min())
-            
-            poc_price = None
-            try:
-                hist_sub = sub_df.copy()
-                hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=8)
-                poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
-                if pd.notna(poc_row):
-                    poc_price = round(float(poc_row.mid), 2)
-            except:
-                poc_price = None
-                
-            if poc_price is None:
-                poc_price = round(current_close, 2)
-                
-            dist_pct = round(((current_close - poc_price) / poc_price) * 100, 2)
-            
-            results[label] = {
-                'poc': poc_price,
-                'dist_pct': dist_pct,
-                'high': high_max,
-                'low': low_min
-            }
-        except:
-            results[label] = {'poc': current_close, 'dist_pct': 0.0, 'high': 0.0, 'low': 0.0}
-            
-    return results
-
-def calculate_rsi(series, period=14):
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    return 100 - (100 / (1 + (gain / loss)))
-
-universe = get_sp500_300_innovation_universe()
-
-st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้น S&P 500")
-selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่ม Sector S&P 500", list(universe.keys()))
-poc_focus = st.sidebar.selectbox("🎯 กรอบเวลา POC หลักที่ใช้เทียบจุดช้อน", ['1 อาทิตย์', '3 วัน', '2 อาทิตย์', '3 อาทิตย์'])
-max_dist_poc = st.sidebar.slider(f"ระยะห่างจาก POC ({poc_focus}) ไม่เกิน (%)", min_value=-10.0, max_value=5.0, value=2.0, step=0.5,
-                                  help="ติดลบคือย่อต่ำกว่า POC (โซนช้อนของถูก) หรือบวกนิดหน่อยเกาะแนวรับ")
-
-st.markdown(f"## 🎯 สแกนหาจังหวะช้อนซื้อหุ้นนวัตกรรม S&P 500 ใน Sector: **{selected_sector}**")
-
-if st.button("🚀 สแกนหาหุ้น S&P 500 จ่อแนวรับ Multi-Timeframe POC"):
-    target_tickers = universe[selected_sector]
-    matched_data = []
-    
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    total_tickers = len(target_tickers)
-    
-    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังวิเคราะห์ข้อมูลเชิงลึกและ Multi-POC ของ [{ticker}] ({i+1}/{total_tickers})...")
-        progress_bar.progress((i + 1) / total_tickers)
-        
-        try:
+            # ดึงข้อมูลย้อนหลัง 3 เดือน (ประมาณ 90 วันทำการ เพื่อครอบคลุมกรอบ 2 เดือน)
             df = yf.download(ticker, period="3mo", interval="1d", progress=False)
             if df.empty or len(df) < 30:
-                continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
-            df.columns = [str(c).capitalize() for c in df.columns]
-            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            df['RSI'] = calculate_rsi(df['Close'], 14)
-            df = df.dropna(subset=['RSI'])
-            if len(df) == 0:
-                continue
+                st.error(f"ไม่พบข้อมูลของหุ้น [{ticker}] หรือข้อมูลน้อยเกินไป ลองตรวจสอบชื่อย่อใหม่อีกครั้งนะเพื่อน")
+            else:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.droplevel(1)
+                df.columns = [str(c).capitalize() for c in df.columns]
+                df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
                 
-            latest_rsi = float(df['RSI'].iloc[-1])
-            latest_close = float(df['Close'].iloc[-1])
-            
-            multi_poc = calculate_multi_timeframe_poc(df)
-            focus_dist = multi_poc[poc_focus]['dist_pct']
-            
-            if focus_dist <= max_dist_poc:
-                tp1_price = round(latest_close * 1.04, 2)
-                stop_loss = round(multi_poc['3 อาทิตย์']['low'] * 0.98, 2)
+                # คำนวณค่าเฉลี่ย Volume 20 วัน
+                df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
+                df['Vol_Ratio'] = df['Volume'] / df['Vol_MA20']
                 
-                matched_data.append({
-                    'Ticker': ticker, 'Moat': moat_story,
-                    'Close': round(latest_close, 2), 'Multi_POC': multi_poc,
-                    'Focus_Dist': focus_dist, 'RSI': round(latest_rsi, 2),
-                    'TP1': tp1_price, 'StopLoss': stop_loss
-                })
-        except:
-            continue
+                # คำนวณ RSI
+                delta = df['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                df['RSI'] = 100 - (100 / (1 + (gain / loss)))
+                
+                df = df.dropna()
+                current_close = float(df['Close'].iloc[-1])
+                
+                # ฟังก์ชันคำนวณ POC และกรอบราคาตามช่วงเวลาที่กำหนด
+                def get_poc_for_days(data_frame, days_count):
+                    sub = data_frame.tail(days_count).copy() if len(data_frame) >= days_count else data_frame.copy()
+                    h_max = float(sub['High'].max())
+                    l_min = float(sub['Low'].min())
+                    p_val = current_close
+                    try:
+                        hist_sub = sub.copy()
+                        hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=8)
+                        poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
+                        if pd.notna(poc_row):
+                            p_val = round(float(poc_row.mid), 2)
+                    except:
+                        p_val = round(current_close, 2)
+                    dist = round(((current_close - p_val) / p_val) * 100, 2)
+                    return {'poc': p_val, 'dist': dist, 'high': h_max, 'low': l_min}
 
-    status_text.empty()
-    progress_bar.empty()
-
-    if matched_data:
-        st.success(f"🎯 สแกนพบหุ้น S&P 500 ที่ย่อตัวลงมาเข้าเกณฑ์ Multi-POC ทั้งหมด **{len(matched_data)} ตัว**!")
-        st.markdown("---")
-        
-        for item in matched_data:
-            ticker = item['Ticker']
-            current_close = item['Close']
-            mpoc = item['Multi_POC']
-            focus_dist = item['Focus_Dist']
-            
-            status_tag = "🟢 [โซนช้อนซื้อของถูก / ต่ำกว่า POC]" if focus_dist <= 0 else "🟡 [กำลังเกาะแนวรับ POC ใกล้ชิด]"
-            expander_title = f"{status_tag} [{ticker}] | ราคา: ${current_close} | ห่างจาก POC ({poc_focus}): {focus_dist}% | RSI: {item['RSI']}"
-            
-            with st.expander(expander_title, expanded=True):
-                col1, col2, col3, col4 = st.columns(4)
+                # กำหนดกรอบเวลาทั้งหมดตามที่มึงต้องการ
+                timeframe_mapping = {
+                    'รายวัน (1 วัน)': 1,
+                    '3 วัน': 3,
+                    '1 อาทิตย์ (5 วัน)': 5,
+                    '2 อาทิตย์ (10 วัน)': 10,
+                    '3 อาทิตย์ (15 วัน)': 15,
+                    '1 เดือน (20 วัน)': 20,
+                    '2 เดือน (40 วัน)': 40
+                }
+                
+                multi_results = {}
+                for tf_label, days_num in timeframe_mapping.items():
+                    multi_results[tf_label] = get_poc_for_days(df, days_num)
+                
+                # กรองวันที่มี Volume ผิดปกติในช่วง 3 เดือน
+                anomaly_df = df[df['Vol_Ratio'] >= volume_spike_multiplier].copy()
+                
+                st.success(f"วิเคราะห์สำเร็จ! โหลดข้อมูล Multi-Timeframe และ Volume Anomaly ของ [{ticker}] เรียบร้อย")
+                st.markdown("---")
+                
+                # แสดง Metric ภาพรวม
+                col1, col2, col3 = st.columns(3)
                 col1.metric("💰 ราคาปัจจุบัน", f"${current_close}")
-                col2.metric(f"📍 POC หลัก ({poc_focus})", f"${mpoc[poc_focus]['poc']}", f"{focus_dist}%")
-                col3.metric("📉 RSI ล่าสุด", f"{item['RSI']}")
-                col4.metric("🎯 เป้าทำกำไรสั้น (+4%)", f"${item['TP1']}")
+                col2.metric("📍 ฐาน POC (กรอบ 1 เดือน)", f"${multi_results['1 เดือน (20 วัน)']['poc']}")
+                col3.metric("🔥 วันที่เกิด Volume ผิดปกติ (3 เดือน)", f"{len(anomaly_df)} ครั้ง")
                 
                 st.markdown("---")
-                st.markdown("### 📊 เปรียบเทียบจุดศูนย์ถ่วงวอลุ่ม (Multi-Timeframe POC Details)")
+                st.markdown("### 📊 ตารางเปรียบเทียบ Multi-Timeframe POC Matrix (ตั้งแต่รายวันถึง 2 เดือน)")
                 
-                poc_rows = []
-                for tf_name, data in mpoc.items():
-                    poc_rows.append({
-                        'ช่วงเวลา': tf_name,
-                        'ราคา POC (ฐานวอลุ่มหนาแน่น)': f"${data['poc']}",
-                        'ระยะห่างจากราคาปัจจุบัน': f"{data['dist_pct']:+.2f}%",
-                        'ราคาสูงสุดในช่วง': f"${data['high']}",
-                        'ราคาต่ำสุดในช่วง': f"${data['low']}"
+                matrix_rows = []
+                for tf_label, res in multi_results.items():
+                    matrix_rows.append({
+                        'กรอบเวลา (Timeframe)': tf_label,
+                        'ราคา POC (ฐานวอลุ่มหนาแน่นที่สุด)': f"${res['poc']}",
+                        'ระยะห่างจากราคาปัจจุบัน': f"{res['dist']:+.2f}%",
+                        'ราคาสูงสุดในช่วง': f"${res['high']}",
+                        'ราคาต่ำสุดในช่วง': f"${res['low']}"
                     })
-                st.table(pd.DataFrame(poc_rows))
+                st.table(pd.DataFrame(matrix_rows))
                 
                 st.markdown("---")
-                st.markdown(f"🔬 **คูเมืองสิทธิบัตร & IP Moat (S&P 500 Core):** {item['Moat']}")
-                st.markdown(f"💡 **แผนการเทรดสไตล์พวกเรา:** เช็กฐานวอลุ่มครบถ้วนแล้ว หุ้นตัวนี้ย่อมาเกาะโซนแนวรับสำคัญ ทยอยสะสมไม้แรกแถวนี้ วางจุดคัทลอสเผื่อหลุดโลว์ใหญ่ที่ **${item['StopLoss']}** และเตรียมขายทำกำไรสั้นเมื่อเด้งแตะเป้า **${item['TP1']}** ลุย!")
-
-        st.markdown("---")
-    else:
-        st.warning("รอบนี้ไม่มีหุ้น S&P 500 ตัวไหนย่อมาถึงโซน POC ที่ตั้งไว้ ลองปรับสไลเดอร์เพิ่มระยะ หรือสลับ Sector ดูใหม่นะเพื่อน!")
-        
+                st.markdown("### 📅 ตารางแกะรอย Volume รายวันผิดปกติ (Volume Anomaly Log ย้อนหลัง 3 เดือน)")
+                
+                if not anomaly_df.empty:
+                    display_anomaly = []
+                    for date_idx, row in anomaly_df.iterrows():
+                        date_str = pd.to_datetime(date_idx).strftime('%Y-%m-%d')
+                        close_p = round(float(row['Close']), 2)
+                        vol_mil = round(float(row['Volume']) / 1e6, 2)
+                        ratio = round(float(row['Vol_Ratio']), 2)
+                        rsi_val = round(float(row['RSI']), 2)
+                        
+                        price_status = "🟢 ราคาปิดบวก (แรงซื้อดันสะสม)" if row['Close'] >= row['Open'] else "🔴 ราคาปิดลบ (แรงขายกระหน่ำ)"
+                        
+                        display_anomaly.append({
+                            'วันที่เกิดเหตุการณ์': date_str,
+                            'ราคาปิด': f"${close_p}",
+                            'สถานะราคา': price_status,
+                            'Volume (ล้านหุ้น)': f"{vol_mil} M",
+                            'อัตราส่วนเทียบ Volume เฉลี่ย (MA20)': f"{ratio}x",
+                            'RSI วันนั้น': f"{rsi_val}"
+                        })
+                    st.table(pd.DataFrame(display_anomaly))
+                else:
+                    st.info("ในช่วง 3 เดือนนี้ ไม่มีวันไหนที่ Volume พุ่งสูงเกินตัวคูณที่ตั้งไว้ แสดงว่าซื้อขายกันปกติไม่มีพิรุธ")
+                    
+                st.markdown("---")
+                st.markdown(f"💡 **มุมมองเพื่อนซี้วิเคราะห์ให้สบายใจ:** ดูจากตาราง **Multi-POC Matrix** ด้านบน ถ้ามึงเห็นว่าราคาปัจจุบันกำลังย่อลงมาคลอเคลียอยู่ใกล้โซน POC ของกรอบ **1 เดือน หรือ 2 เดือน** (ระยะห่างติดลบนิดๆ หรือ 0%) แถมพอย้อนไปดูตาราง **Volume Anomaly** แล้วพบว่ามีวันที่มีวอลุ่มพุ่งหนาแน่นในโซนราคาเดียวกัน — **มั่นใจได้เลยเพื่อน!** ตรงนั้นแหละคือแนวรับเหล็กที่ Smart Money เข้ามาตั้งโต๊ะสะสมของจริง ทยอยเก็บเข้าพอร์ตแล้วรอนับกำไรได้เลย ลุย!วิเคราะห์จบครบเครื่องแบบนี้ เอาไปใช้เทรดทำกำไรได้สบายใจแน่นอนเพื่อน!
+                
