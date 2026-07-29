@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-st.set_page_config(page_title="Deep Innovation & Swing Watchlist Pro", layout="wide")
+st.set_page_config(page_title="Deep Innovation & Swing Radar Pro (Full Universe)", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Watchlist Pro (Custom Track & Persistent Watchlist)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & Custom Ticker Track)")
+st.title("🎯 Deep Innovation & Swing Radar Pro (Full Universe & Custom Track)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรลิขสิทธิ์ & แกะรอยเจ้ามือสะสมรอบข่าว (Full S&P 500 Deep Tech List)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -19,32 +19,97 @@ def get_comprehensive_universe():
             'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก',
             'ARM': 'เจ้าของสถาปัตยกรรมชิปมือถือและชิป AI ใช้พลังงานต่ำทั่วโลก',
             'QCOM': 'สิทธิบัตรหลักเทคโนโลยีสื่อสารไร้สาย 5G/6G และ Edge AI ชิป',
+            'INTC': 'การพลิกฟื้นกิจการโรงงานผลิตชิปขั้นสูง (Foundry) และสิทธิบัตร x86',
+            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI',
+            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก',
+            'LRCX': 'เครื่องมือและสิทธิบัตรกระบวนการผลิตเซมิคอนดักเตอร์ระดับนาโน',
+            'KLAC': 'ระบบตรวจสอบและควบคุมความสะอาดในการผลิตชิปขั้นสูง',
+            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลกสำหรับชิปยุคใหม่',
+            'ADI': 'เซมิคอนดักเตอร์ระบบอนาล็อกและอุตสาหกรรมอัจฉริยะ',
+            'TXN': 'ชิปประมวลผลอนาล็อกและระบบฝังตัวความน่าเชื่อถือสูง',
+            'MCHP': 'ไมโครคอนโทรลเลอร์และเซมิคอนดักเตอร์อัจฉริยะ',
+            'NOW': 'แพลตฟอร์ม Workflow AI อัตโนมัติสำหรับองค์กรขนาดใหญ่ระดับโลก',
+            'CRM': 'Enterprise Cloud CRM และ AI Agent ผูกขาดฐานลูกค้าองค์กร',
+            'ADBE': 'ซอฟต์แวร์ครีเอทีฟดิจิทัลและสิทธิบัตรเครื่องมือ Generative AI',
+            'SNOW': 'แพลตฟอร์มคลาวด์ดาต้าแวร์เฮาส์และการวิเคราะห์ข้อมูลเชิงลึก',
             'PLTR': 'ซอฟต์แวร์วิเคราะห์ข้อมูล Big Data และ AI ทางทหาร/องค์กร (Gotham/Foundry)',
-            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลกสำหรับชิปยุคใหม่'
+            'ANET': 'โครงข่ายดาต้าเซ็นเตอร์ความเร็วสูงพิเศษสำหรับ AI Infra',
+            'PANW': 'ผู้นำระบบความปลอดภัยไซเบอร์ระดับองค์กร (Cybersecurity Moat)',
+            'CRWD': 'ระบบป้องกันภัยคุกคามทางไซเบอร์แบบ Cloud-native อัจฉริยะ',
+            'FTNT': 'โครงสร้างพื้นฐานความปลอดภัยเครือข่ายและไฟร์วอลล์สิทธิบัตรแกร่ง'
         },
         "🤖 2. Smart Manufacturing, Industrial Robotics & Clean Energy": {
             'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus',
+            'CAT': 'เครื่องจักรกลหนัก, ระบบขุดเจาะอัตโนมัติ และยานยนต์เหมืองไร้คนขับอัจฉริยะ',
             'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง',
             'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center และโรงงาน AI',
+            'GEV': 'เทคโนโลยีโครงข่ายไฟฟ้าอัจฉริยะ กังหันลม และระบบขับเคลื่อนพลังงานหลัก',
             'NEE': 'ยักษ์ใหญ่พลังงานสะอาดและโครงสร้างพื้นฐานกริดไฟฟ้าป้อน Data Center AI',
-            'FSLR': 'สิทธิบัตรการผลิตแผงโซลาร์เซลล์เทคโนโลยีฟิล์มบางขั้นสูงในสหรัฐฯ'
+            'ENPH': 'เทคโนโลยีไมโครอินเวอร์เตอร์และระบบกักเก็บพลังงานแสงอาทิตย์อัจฉริยะ',
+            'FSLR': 'สิทธิบัตรการผลิตแผงโซลาร์เซลล์เทคโนโลยีฟิล์มบางขั้นสูงในสหรัฐฯ',
+            'CEG': 'ผู้ผลิตพลังงานคาร์บอนต่ำและโรงไฟฟ้านิวเคลียร์รายใหญ่ที่สุดของสหรัฐฯ',
+            'HON': 'ระบบอัตโนมัติในโรงงาน, หุ่นยนต์คลังสินค้าอัจฉริยะ และเทคโนโลยีอาคารประหยัดพลังงาน',
+            'ROK': 'ซอฟต์แวร์และฮาร์ดแวร์ระบบอัตโนมัติสำหรับโรงงานอัจฉริยะ (The Connected Enterprise)',
+            'EMR': 'ผู้นำนวัตกรรมระบบควบคุมอัตโนมัติระดับอุตสาหกรรม (Industrial Automation)',
+            'PWR': 'ผู้รับเหมาโครงสร้างพื้นฐานระบบไฟฟ้าแรงสูงและดาต้าเซ็นเตอร์เบอร์หนึ่ง',
+            'LIN': 'ก๊าซอุตสาหกรรมและนวัตกรรมเคมีภัณฑ์ไฮโดรเจนสะอาดระดับโลก',
+            'DELL': 'เซิร์ฟเวอร์โครงสร้างพื้นฐาน AI Infrastructure และฮาร์ดแวร์องค์กร'
         },
         "🧬 3. Biotech, Healthcare & Medical Robotics": {
             'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก ผูกขาดตลาดร้อยเปอร์เซ็นต์)',
             'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
             'NVO': 'นวัตกรรมยารักษาโรคอ้วนและเบาหวานระดับโลก (Wegovy/Ozempic)',
-            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)'
+            'UNH': 'ระบบนิเวศประกันสุขภาพและบริการเทคโนโลยีการแพทย์ขนาดใหญ่',
+            'JNJ': 'ความหลากหลายของเวชภัณฑ์และอุปกรณ์การแพทย์ระดับโลก',
+            'ABBV': 'ยารักษาโรคภูมิคุ้มกันและมะเร็งเฉพาะทางที่มีสิทธิบัตรคุ้มครอง',
+            'MRK': 'นวัตกรรมยารักษามะเร็งระดับโลก (Keytruda)',
+            'PFE': 'นวัตกรรมวัคซีนและเวชภัณฑ์ระดับโลก',
+            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง',
+            'TMO': 'เครื่องมือวิทยาศาสตร์และบริการวิจัยพันธุศาสตร์ระดับโลก',
+            'ABT': 'อุปกรณ์การแพทย์ตรวจวินิจฉัยและโภชนาการทางการแพทย์',
+            'DHR': 'เทคโนโลยีชีวภาพและเครื่องมือวิเคราะห์ทางการแพทย์ขั้นสูง',
+            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)',
+            'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
+            'ZTS': 'เวชภัณฑ์และนวัตกรรมสุขภาพสัตว์เลี้ยงระดับโลก'
         },
         "🌐 4. Big Platforms, Fintech & High-Moat Financials": {
             'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
             'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
             'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
-            'COIN': 'โครงสร้างพื้นฐานแลกเปลี่ยนสินทรัพย์ดิจิทัลและคริปโต'
+            'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
+            'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต',
+            'BRK-B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
+            'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
+            'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค',
+            'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
+            'AXP': 'เครือข่ายบัตรเครดิตกลุ่มลูกค้ากำลังซื้อสูง (High Net Worth)',
+            'BLK': 'ผู้จัดการกองทุนที่ใหญ่ที่สุดในโลก (BlackRock / Aladdin Platform)',
+            'GS': 'วาณิชธนกิจชั้นนำระดับโลกและตลาดทุน',
+            'MS': 'บริการบริหารความมั่งคั่งและวาณิชธนกิจระดับโลก',
+            'BAC': 'ธนาคารพาณิชย์รายใหญ่และฐานลูกค้ารายย่อยทั่วสหรัฐฯ',
+            'SCHW': 'แพลตฟอร์มการลงทุนและซื้อขายหลักทรัพย์ชั้นนำ',
+            'PYPL': 'แพลตฟอร์มชำระเงินออนไลน์และฟินเทคระดับโลก',
+            'SQ': 'ระบบนิเวศการเงินและบล็อกเชนรายย่อย',
+            'COIN': 'โครงสร้างพื้นฐานแลกเปลี่ยนสินทรัพย์ดิจิทัลและคริปโต',
+            'HOOD': 'แพลตฟอร์มซื้อขายสินทรัพย์ดิจิทัลและหุ้นรุ่นใหม่',
+            'FI': 'เทคโนโลยีบริการการเงินและระบบประมวลผลธนาคาร',
+            'FIS': 'ฟินเทคระบบธนาคารระดับองค์กร',
+            'GPN': 'เทคโนโลยีการชำระเงินร้านค้าทั่วโลก',
+            'SPGI': 'ข้อมูลเรตติ้งและดัชนีมาตรฐานการเงินโลก',
+            'MCO': 'การจัดอันดับความน่าเชื่อถือทางการเงินระดับโลก',
+            'ICE': 'ตลาดหลักทรัพย์และแพลตฟอร์มซื้อขายอนุพันธ์ระดับโลก'
         },
         "🚀 5. Space Tech, Defense & Advanced Materials": {
+            'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ',
+            'RTX': 'เทคโนโลยีการบินอวกาศและระบบเรดาร์ป้องกันประเทศ',
+            'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง',
+            'BA': 'อากาศยานพาณิชย์และเทคโนโลยีอวกาศระดับโลก',
+            'TDG': 'ชิ้นส่วนอากาศยานเฉพาะทางที่มีกำไรสุทธิสูง',
+            'HEI': 'อุปกรณ์การบินและชิ้นส่วนทดแทนที่มีสิทธิบัตรคุ้มครอง',
             'RKLB': 'ผู้นำการปล่อยจรวดอวกาศเชิงพาณิชย์และดาวเทียมวงโคจรต่ำ',
             'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง',
-            'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ'
+            'DD': 'นวัตกรรมวัสดุศาสตร์ขั้นสูงและอิเล็กทรอนิกส์เคมี',
+            'EMN': 'วัสดุพิเศษและโพลิเมอร์นวัตกรรมเพื่อความยั่งยืน'
         }
     }
     return universe
@@ -123,108 +188,88 @@ def calculate_timeframe_metrics(df):
 
 universe = get_comprehensive_universe()
 
-# Session State สำหรับเก็บ Watchlist ที่ติ๊กเลือกและพิมพ์เพิ่มเองแบบถาวร
-if 'my_watchlist' not in st.session_state:
-    st.session_state.my_watchlist = ['NVDA', 'PLTR', 'ISRG']
-
-st.sidebar.markdown("### 📌 จัดการ Watchlist & Track หุ้น")
-selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรมตั้งต้น", list(universe.keys()))
+# Sidebar Setup
+st.sidebar.markdown("### ⚙️ ควบคุมการสแกนเรดาร์ (Full Tech)")
+selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรมสแกนหลัก", list(universe.keys()))
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**ติ๊กเลือกหุ้นในหมวด: {selected_sector}**")
+st.sidebar.markdown("### 🔍 ช่องพิมพ์ Ticker เพิ่มเติม (Custom Track)")
+custom_input_ticker = st.sidebar.text_input("พิมพ์ชื่อย่อหุ้น (เช่น TSLA, GOOGL, ARM)", "").upper().strip()
 
-current_sector_stocks = universe[selected_sector]
-for ticker, desc in current_sector_stocks.items():
-    is_checked = ticker in st.session_state.my_watchlist
-    checked = st.sidebar.checkbox(f"{ticker} ({desc[:22]}...)", value=is_checked, key=f"chk_{ticker}")
-    if checked and ticker not in st.session_state.my_watchlist:
-        st.session_state.my_watchlist.append(ticker)
-    elif not checked and ticker in st.session_state.my_watchlist:
-        st.session_state.my_watchlist.remove(ticker)
+target_tickers = list(universe[selected_sector].keys())
+if custom_input_ticker and custom_input_ticker not in target_tickers:
+    target_tickers.append(custom_input_ticker)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔍 พิมพ์ Ticker เพิ่มเอง (Custom Track)")
-custom_input_ticker = st.sidebar.text_input("พิมพ์ชื่อย่อหุ้น (เช่น TSLA, GOOGL, BABA)", "").upper().strip()
-if st.sidebar.button("➕ เพิ่มเข้า Watchlist"):
-    if custom_input_ticker and custom_input_ticker not in st.session_state.my_watchlist:
-        st.session_state.my_watchlist.append(custom_input_ticker)
-        st.sidebar.success(f"เพิ่ม [{custom_input_ticker}] สำเร็จ!")
-        st.rerun()
+st.markdown(f"## 🚀 ผลการสแกนกลุ่ม: {selected_sector}")
+st.markdown(f"*(กำลังวิเคราะห์หุ้นนวัตกรรมและสิทธิบัตรทั้งหมด {len(target_tickers)} ตัวในเซกเตอร์นี้ พร้อมแกะรอยเกมเจ้ามือและสิถิติ Volume)*")
 
-if st.sidebar.button("🗑️ ล้าง Watchlist ทั้งหมด"):
-    st.session_state.my_watchlist = []
-    st.rerun()
-
-st.markdown(f"## 📋 Watchlist & Track หุ้นส่วนตัวของมึง ({len(st.session_state.my_watchlist)} ตัว)")
-
-if not st.session_state.my_watchlist:
-    st.info("💡 มึงยังไม่ได้เลือกหุ้นเข้า Watchlist เลยเพื่อน! ติ๊กเลือกจากเมนูด้านซ้าย หรือพิมพ์ Ticker เพิ่มเองได้เลย ระบบจะล็อกข้อมูลไว้ให้ตลอด")
-else:
-    for ticker in list(st.session_state.my_watchlist):
-        try:
-            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty or len(df) < 40:
-                st.warning(symbol_warn := f"⚠️ ไม่พบข้อมูลของหุ้น [{ticker}] หรือข้อมูลน้อยเกินไป ลองเช็กตัวย่อใหม่อีกครั้งนะเพื่อน")
-                continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
-            df.columns = [str(c).capitalize() for c in df.columns]
-            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            df['RSI'] = calculate_rsi(df['Close'], 14)
-            df = df.dropna(subset=['RSI'])
-            if len(df) == 0:
-                continue
-                
-            latest_close = float(df['Close'].iloc[-1])
-            latest_rsi = float(df['RSI'].iloc[-1])
+for ticker in target_tickers:
+    try:
+        df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+        if df.empty or len(df) < 40:
+            continue
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+        df.columns = [str(c).capitalize() for c in df.columns]
+        df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+        df['RSI'] = calculate_rsi(df['Close'], 14)
+        df = df.dropna(subset=['RSI'])
+        if len(df) == 0:
+            continue
             
-            recent = df.tail(20).copy()
-            high_max = float(recent['High'].max())
-            low_min = float(recent['Low'].min())
-            
-            tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-            tp1_price = round(latest_close * 1.05, 2)
-            
-            # ค้นหาคำอธิบาย Moat ของหุ้น
-            moat_text = "หุ้นนวัตกรรม สิทธิบัตรเฉพาะทาง และเทคโนโลยีอนาคตไกล"
-            for sec_name, stocks in universe.items():
-                if ticker in stocks:
-                    moat_text = stocks[ticker]
-                    break
+        latest_close = float(df['Close'].iloc[-1])
+        latest_rsi = float(df['RSI'].iloc[-1])
+        
+        recent = df.tail(20).copy()
+        high_max = float(recent['High'].max())
+        low_min = float(recent['Low'].min())
+        
+        tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+        tp1_price = round(latest_close * 1.05, 2)
+        
+        moat_text = "หุ้นนวัตกรรม สิทธิบัตรเฉพาะทาง และเทคโนโลยีเติบโตสูง"
+        found_in_universe = False
+        for sec_name, stocks in universe.items():
+            if ticker in stocks:
+                moat_text = stocks[ticker]
+                found_in_universe = True
+                break
+        if not found_in_universe and ticker == custom_input_ticker:
+            moat_text = "หุ้นเฉพาะกิจที่มึงเพิ่มเข้ามาในเรดาร์ติดตามพิเศษ"
 
-            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${latest_close:.2f} | High: ${high_max:.2f} / Low:${low_min:.2f} | RSI: {latest_rsi:.1f}"
+        expander_title = f"🟢 [{ticker}] | ราคาปิด: ${latest_close:.2f} | High: ${high_max:.2f} / Low: ${low_min:.2f} | RSI: {latest_rsi:.1f}"
+        
+        with st.expander(expander_title, expanded=False):
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("💰 ราคาปิดปัจจุบัน", f"${latest_close:.2f}")
+            col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{latest_rsi:.1f} / {rsi_2m_avg}")
+            col3.metric("📊 กรอบราคา (1M High/Low)", f"${high_max:.2f} / ${low_min:.2f}")
+            col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${tp1_price}")
             
-            with st.expander(expander_title, expanded=True):
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 ราคาปิดปัจจุบัน", f"${latest_close:.2f}")
-                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{latest_rsi:.1f} / {rsi_2m_avg}")
-                col3.metric("📊 กรอบราคา (1M High/Low)", f"${high_max:.2f} /${low_min:.2f}")
-                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${tp1_price}")
-                
-                st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-                tf_rows = []
-                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
-                    if tf_name in tf_data:
-                        info = tf_data[tf_name]
-                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                        tf_rows.append({
-                            'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
-                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
-                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
-                            'กรอบ (Range)': f"{info['range_pct']}%",
-                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
-                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
-                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
-                        })
-                st.table(pd.DataFrame(tf_rows))
+            st.markdown("---")
+            st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+            tf_rows = []
+            for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                if tf_name in tf_data:
+                    info = tf_data[tf_name]
+                    poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                    tf_rows.append({
+                        'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                        'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                        'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                        'กรอบ (Range)': f"{info['range_pct']}%",
+                        'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                        '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                        '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
+                    })
+            st.table(pd.DataFrame(tf_rows))
 
-                st.markdown("---")
-                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร)")
-                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้จังหวะราคากำลังเกาะโซนฐานสะสม สังเกตจากตาราง Multi-Timeframe ถ้าช่วงสัปดาห์ก่อนๆ โวลุ่มเริ่มหนาผิดปกติแต่ราคายืนนิ่ง แสดงว่าเจ้ามือซุ่มเก็บของรอข่าวประกาศสิทธิบัตรหรือผลประกอบการไตรมาสนี้แน่นอน!")
-                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${low_min:.2f} -${low_min*1.02:.2f}** (เกาะแนวรับไส้เทียนล่างสุดอ้างอิงฐานราคา)")
-                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{moat_text}**")
-                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${tp1_price}** หรือลุ้นรันเทรนด์ยาวๆ ตามกระแสข่าวสิทธิบัตรหลักของบริษัท")
-        except:
-            st.error(f"ไม่สามารถดึงข้อมูลของหุ้น [{ticker}] ได้ในขณะนี้ ลองตรวจสอบตัวย่อ Ticker อีกครั้งนะเพื่อน")
-            
+            st.markdown("---")
+            st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร)")
+            st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้จังหวะราคากำลังเกาะโซนฐานสะสม สังเกตจากตาราง Multi-Timeframe ถ้าช่วงสัปดาห์ก่อนๆ โวลุ่มเริ่มหนาผิดปกติแต่ราคายืนนิ่ง แสดงว่าเจ้ามือซุ่มเก็บของรอข่าวประกาศสิทธิบัตรหรือผลประกอบการไตรมาสนี้แน่นอน!")
+            st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${low_min:.2f} - ${low_min*1.02:.2f}** (เกาะแนวรับไส้เทียนล่างสุดอ้างอิงฐานราคา)")
+            st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{moat_text}**")
+            st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${tp1_price}** หรือลุ้นรันเทรนด์ยาวๆ ตามกระแสข่าวสิทธิบัตรหลักของบริษัท")
+    except:
+        st.error(f"ไม่สามารถดึงข้อมูลของหุ้น [{ticker}] ได้ในขณะนี้ ลองตรวจสอบตัวย่อ Ticker อีกครั้งนะเพื่อน")
+        
