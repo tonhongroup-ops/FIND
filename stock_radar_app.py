@@ -9,7 +9,7 @@ st.title("🎯 Deep Innovation & FMP Fundamental Radar Pro (FMP API Integrated)"
 st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และงบการเงินจริง (90 หุ้น S&P 500 | FMP Data & Multi-Timeframe POC)")
 
 # ใส่ FMP API Key ของมึงตรงนี้
-FMP_API_KEY = "Akyx1POpfLt8geYg7oCuIvQW0qIsQjnh"
+FMP_API_KEY = "Akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -119,7 +119,6 @@ def get_comprehensive_universe():
 
 def fetch_fmp_quote_and_profile(ticker):
     try:
-        # ดึงราคาและข้อมูลบริษัทแบบเรียลไทม์จาก FMP
         url_quote = f"https://financialmodelingprep.com/api/v3/quote/{ticker}?apikey={FMP_API_KEY}"
         res = requests.get(url_quote).json()
         if not res:
@@ -137,7 +136,6 @@ def fetch_fmp_quote_and_profile(ticker):
 
 def fetch_fmp_historical(ticker):
     try:
-        # ดึงราคาย้อนหลังรายวัน (Daily Historical) จาก FMP สำหรับคำนวณ POC
         url_hist = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}?apikey={FMP_API_KEY}"
         res = requests.get(url_hist).json()
         hist = res.get('historical', [])
@@ -159,7 +157,6 @@ def calculate_timeframe_metrics(df):
     results = {}
     try:
         current_close = float(df['Close'].iloc[-1])
-        baseline_full_avg = float(df['Volume'].mean())
     except:
         return {}, 0.0
 
@@ -224,7 +221,7 @@ strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกล�
     "2. โหมดโมเมนตัมเบรกเอาท์ (Momentum Breakout & Volatility)"
 ])
 
-st.markdown(## 🎯 สแกนหาหุ้นเล่นรอบด้วยข้อมูลจริง FMP ใน Sector: **{selected_sector}**)
+st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบด้วยข้อมูลจริง FMP ใน Sector: **{selected_sector}**")
 
 if st.button("🚀 เริ่มดึงงบและสแกนหุ้น 90 ตัวผ่าน FMP API"):
     target_tickers = universe[selected_sector]
@@ -253,7 +250,7 @@ if st.button("🚀 เริ่มดึงงบและสแกนหุ้�
             latest_rsi = float(df['RSI'].iloc[-1])
             latest_close = quote_info['price']
             pe_ratio = quote_info['pe']
-            market_cap = quote_info['marketCap'] / 1e9 # แปลงเป็น Billion USD
+            market_cap = quote_info['marketCap'] / 1e9 
             
             recent = df.tail(20).copy()
             high_max = float(recent['High'].max())
