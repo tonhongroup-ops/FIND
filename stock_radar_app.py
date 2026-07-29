@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import requests
+import yfinance as yf
 
-st.set_page_config(page_title="Deep Innovation & FMP Swing Watchlist Pro", layout="wide")
+st.set_page_config(page_title="Deep Innovation & Swing Watchlist Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & FMP Swing Watchlist Pro (Persistent Watchlist)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (FMP Real Data & Persistent State)")
-
-FMP_API_KEY = "Akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
+st.title("🎯 Deep Innovation & Swing Watchlist Pro (Persistent Checkbox Watchlist)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & Custom Watchlist)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -116,36 +114,6 @@ def get_comprehensive_universe():
     }
     return universe
 
-def fetch_fmp_quote(ticker):
-    try:
-        url = f"https://financialmodelingprep.com/api/v3/quote/{ticker}?apikey={FMP_API_KEY}"
-        res = requests.get(url).json()
-        if not res:
-            return None
-        data = res[0]
-        return {
-            'price': float(data.get('price', 0)),
-            'volume': float(data.get('volume', 0)),
-            'marketCap': float(data.get('marketCap', 0)) / 1e9
-        }
-    except:
-        return None
-
-def fetch_fmp_historical(ticker):
-    try:
-        url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}?apikey={FMP_API_KEY}"
-        res = requests.get(url).json()
-        hist = res.get('historical', [])
-        if not hist:
-            return None
-        df = pd.DataFrame(hist)
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.sort_values('date').reset_index(drop=True)
-        df.rename(columns={'close': 'Close', 'high': 'High', 'low': 'Low', 'volume': 'Volume'}, inplace=True)
-        return df
-    except:
-        return None
-
 def calculate_rsi(series, period=14):
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -220,130 +188,104 @@ def calculate_timeframe_metrics(df):
 
 universe = get_comprehensive_universe()
 
-# Persistent State Initialization
-if 'watchlist_data' not in st.session_state:
-    st.session_state.watchlist_data = []
+# Session State สำหรับเก็บ Watchlist ที่ติ๊กเลือกไว้แบบถาวร ไม่หลุดหาย
+if 'my_watchlist' not in st.session_state:
+    st.session_state.my_watchlist = []
 
-st.sidebar.markdown("### ⚙️ ตั้งค่า FMP Watchlist ไม่หลุด")
-selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
-strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การสแกน", [
-    "1. โหมดสะสมพลังออกข้าง (Range-Bound Accumulation)", 
-    "2. โหมดโมเมนตัมเบรกเอาท์ตามข่าว (Momentum Breakout & Volume Surge)"
-])
-rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 20, 50, 35)
-rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
+st.sidebar.markdown("### 📌 จัดการ Watchlist ส่วนตัว (ติ๊กเลือกตามใจชอบ)")
+selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม", list(universe.keys()))
 
-st.markdown(f"## 🎯 Watchlist หุ้นนวัตกรรม & แกะรอยเจ้ามือใน Sector: **{selected_sector}**")
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"**เลือกหุ้นในหมวด: {selected_sector}**")
 
-if st.button("🚀 เริ่มสแกนข้อมูลจริงผ่าน FMP API"):
-    target_tickers = universe[selected_sector]
-    new_matched = []
-    
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    total_tickers = len(target_tickers)
-    
-    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังดึงข้อมูล FMP สำหรับหุ้น [{ticker}] ({i+1}/{total_tickers})...")
-        progress_bar.progress((i + 1) / total_tickers)
-        
+# สร้าง Checkbox ให้ติ๊กเลือกหุ้นแต่ละตัวใน Sector นั้นๆ
+current_sector_stocks = universe[selected_sector]
+for ticker, desc in current_sector_stocks.items():
+    is_checked = ticker in st.session_state.my_watchlist
+    checked = st.sidebar.checkbox(f"{ticker} ({desc[:25]}...)", value=is_checked, key=f"chk_{ticker}")
+    if checked and ticker not in st.session_state.my_watchlist:
+        st.session_state.my_watchlist.append(ticker)
+    elif not checked and ticker in st.session_state.my_watchlist:
+        st.session_state.my_watchlist.remove(ticker)
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🗑️ ล้าง Watchlist ทั้งหมด"):
+    st.session_state.my_watchlist = []
+    st.rerun()
+
+st.markdown(f"## 📋 Watchlist ส่วนตัวของมึง ({len(st.session_state.my_watchlist)} ตัวที่เลือกไว้)")
+
+if not st.session_state.my_watchlist:
+    st.info("💡 มึงยังไม่ได้ติ๊กเลือกหุ้นเข้า Watchlist เลยเพื่อน! ไปติ๊กเลือกรายชื่อที่แถบเมนูด้านซ้ายมือได้เลย ระบบจะล็อกข้อมูลไว้ให้ตลอดไม่มีหลุดหาย!")
+else:
+    if st.button("🚀 โหลดและวิเคราะห์ข้อมูลหุ้นใน Watchlist (Yahoo Finance)"):
+        pass # กดเพื่อรีเฟรชข้อมูลล่าสุด
+
+    # ดึงข้อมูลและแสดงผลหุ้นทุกตัวที่อยู่ใน Session Watchlist
+    for ticker in st.session_state.my_watchlist:
         try:
-            quote = fetch_fmp_quote(ticker)
-            df = fetch_fmp_historical(ticker)
-            
-            if not quote or df is None or len(df) < 40:
+            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+            if df.empty or len(df) < 40:
                 continue
-                
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+            df.columns = [str(c).capitalize() for c in df.columns]
+            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
             df['RSI'] = calculate_rsi(df['Close'], 14)
             df = df.dropna(subset=['RSI'])
             if len(df) == 0:
                 continue
                 
+            latest_close = float(df['Close'].iloc[-1])
             latest_rsi = float(df['RSI'].iloc[-1])
-            latest_close = quote['price']
             
             recent = df.tail(20).copy()
             high_max = float(recent['High'].max())
             low_min = float(recent['Low'].min())
-            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
             
-            recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
-            last_vol = quote['volume']
-            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+            tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+            tp1_price = round(latest_close * 1.05, 2)
             
-            is_matched = False
-            if "สะสม" in strategy_mode:
-                if range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max:
-                    is_matched = True
-            else:
-                vol_spike = last_vol >= (last_vol_ma * 1.05) if last_vol_ma > 0 else False
-                if range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike:
-                    is_matched = True
+            # ค้นหาคำอธิบาย Moat ของหุ้นตัวนั้น
+            moat_text = "หุ้นนวัตกรรมและเทคโนโลยีเติบโตสูง"
+            for sec_name, stocks in universe.items():
+                if ticker in stocks:
+                    moat_text = stocks[ticker]
+                    break
 
-            if is_matched:
-                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                tp1_price = round(latest_close * 1.05, 2)
+            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${latest_close:.2f} | High: ${high_max:.2f} / Low: ${low_min:.2f} | RSI: {latest_rsi:.1f}"
+            
+            with st.expander(expander_title, expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปิดปัจจุบัน", f"${latest_close:.2f}")
+                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{latest_rsi:.1f} / {rsi_2m_avg}")
+                col3.metric("📊 กรอบราคา (1M High/Low)", f"${high_max:.2f} / ${low_min:.2f}")
+                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${tp1_price}")
                 
-                new_matched.append({
-                    'Ticker': ticker, 'Moat': moat_story,
-                    'Close': round(latest_close, 2), 'MarketCap': round(quote['marketCap'], 2),
-                    'Range_Pct': round(range_pct * 100, 1),
-                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'TP1': tp1_price,
-                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
-                })
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+                tf_rows = []
+                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                    if tf_name in tf_data:
+                        info = tf_data[tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
+                        })
+                st.table(pd.DataFrame(tf_rows))
+
+                st.markdown("---")
+                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร)")
+                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้อยู่ในโซนสะสมกำลังสวย สังเกตจากตาราง Multi-Timeframe ถ้าช่วงสัปดาห์ก่อนๆ โวลุ่มเริ่มหนาผิดปกติแต่ราคายืนนิ่ง แสดงว่าเจ้ามือทยอยเก็บของเงียบๆ รอข่าวประกาศผลประกอบการหรือความคืบหน้าสิทธิบัตรนวัตกรรม!")
+                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${low_min:.2f} - ${low_min*1.02:.2f}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
+                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{moat_text}**")
+                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${tp1_price}** หรือลุ้นรันเทรนด์ยาวๆ ตามกระแสข่าวสิทธิบัตรหลักของบริษัท")
         except:
-            continue
-
-    status_text.empty()
-    progress_bar.empty()
-    
-    # Save to session state so it won't disappear
-    st.session_state.watchlist_data = new_matched
-    st.success(f"🎯 อัปเดตและบันทึกเข้า Persistent Watchlist สำเร็จ! พบหุ้นผ่านเกณฑ์ **{len(new_matched)} ตัว**!")
-
-# Render from session state to prevent any loss
-if st.session_state.watchlist_data:
-    st.markdown(f"### 📋 รายชื่อหุ้นใน Watchlist ปัจจุบัน (ล็อกข้อมูลไม่หลุดหาย)")
-    for item in st.session_state.watchlist_data:
-        ticker = item['Ticker']
-        current_close = item['Close']
-        
-        expander_title = f"🟢 [{ticker}] | ราคา: ${current_close} | MCap: ${item['MarketCap']}B | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
-        
-        with st.expander(expander_title, expanded=False):
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("💰 ราคาปัจจุบัน (FMP)", f"${current_close}")
-            col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
-            col3.metric("📊 กรอบราคา (1M High/Low)", f"${item['High_Max']} / ${item['Low_Min']}")
-            col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+            st.error(f"ไม่สามารถดึงข้อมูลของหุ้น [{ticker}] ได้ในขณะนี้ ลองเช็กชื่อย่ออีกครั้งนะเพื่อน")
             
-            st.markdown("---")
-            st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-            tf_rows = []
-            for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
-                if tf_name in item['TF_Data']:
-                    info = item['TF_Data'][tf_name]
-                    poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                    tf_rows.append({
-                        'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
-                        'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
-                        'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
-                        'กรอบ (Range)': f"{info['range_pct']}%",
-                        'POC (ฐานราคาหนาแน่นสุด)': poc_display,
-                        '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
-                        '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
-                    })
-            st.table(pd.DataFrame(tf_rows))
-
-            st.markdown("---")
-            st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร)")
-            st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้จังหวะราคากำลังเกาะโซนฐานสะสม สังเกตจากตาราง Multi-Timeframe ถ้าช่วงสัปดาห์ก่อนๆ โวลุ่มเริ่มหนาผิดปกติแม้ราคานิ่ง แสดงว่าเจ้ามือซุ่มเก็บของรอข่าวประกาศสิทธิบัตรหรือผลประกอบการไตรมาสนี้แน่นอน!")
-            st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดอ้างอิงฐานราคา)")
-            st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
-            st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือลุ้นรันเทรนด์ยาวๆ ตามกระแสข่าวสิทธิบัตรหลักของบริษัท")
-
-    st.markdown("---")
-else:
-    st.warning("ยังไม่มีข้อมูลใน Watchlist กดปุ่ม 'เริ่มสแกนข้อมูลจริงผ่าน FMP API' ด้านบนเพื่อดึงข้อมูลเข้าสู่ระบบได้เลยเพื่อน!")
-    
