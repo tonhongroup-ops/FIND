@@ -2,146 +2,329 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
-import concurrent.futures
 
-st.set_page_config(page_title="Pro Innovation & Patent Sniper", layout="wide")
+st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Pro Innovation & Patent Sniper (Multi-Timeframe & Sector Matrix)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรเปลี่ยนโลก 100 ตัว | เจาะลึก Multi-Timeframe POC (1สัปดาห์, 1เดือน, 2เดือน) และ % Volume Change")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Mega Custom Universe Edition)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร และรอบข่าวสาร (Fixed Volume Dynamics & Full Integration)")
 
-sectors_universe = {
-    "💻 1. AI, Semiconductors & Cloud Infra": [
-        'NVDA', 'AAPL', 'MSFT', 'AVGO', 'AMD', 'QCOM', 'INTC', 'TSM', 'AMZN', 'GOOGL'
-    ],
-    "🤖 2. Robotics, Automation & Smart Factory": [
-        'TSLA', 'ROK', 'PATH', 'SYM', 'ISRG', 'ZBRA', 'FANUY', 'ABB', 'DE', 'CAT'
-    ],
-    "⚡ 3. Clean Energy, Smart Grid & Energy Storage": [
-        'ETN', 'NEE', 'ENPH', 'FSLR', 'PLUG', 'STEM', 'BE', 'RUN', 'QS', 'CHPT'
-    ],
-    "🧬 4. Biotech, Genomics & Medical Breakthroughs": [
-        'LLY', 'ABT', 'JNJ', 'PFE', 'MRNA', 'BNTX', 'CRSP', 'EDIT', 'NTLA', 'REGN'
-    ],
-    "🚀 5. Space Tech, Defense & Advanced Materials": [
-        'RKLB', 'ASTS', 'SPCE', 'LMT', 'RTX', 'NOC', 'BA', 'HEI', 'TDG', 'TXT'
-    ],
-    "🌐 6. Fintech, Blockchain & High-Moat Digital": [
-        'HOOD', 'SQ', 'COIN', 'PYPL', 'V', 'MA', 'AXP', 'FI', 'FIS', 'AFRM'
-    ],
-    "🚗 7. Autonomous Driving, EV & Next-Gen Mobility": [
-        'RIVN', 'LCID', 'NIO', 'XPEV', 'GM', 'F', 'UBER', 'LYFT', 'APTV', 'MBLY'
-    ],
-    "🔋 8. Advanced Materials, Nanotech & Chemistry": [
-        'LIN', 'APD', 'SHW', 'ECL', 'DD', 'DOW', 'CE', 'EMN', 'PPG', 'VALE'
-    ],
-    "🛒 9. E-Commerce, Consumer Tech & Digital Ecosystems": [
-        'SHOP', 'ABNB', 'DASH', 'MELI', 'SE', 'PINS', 'SNAP', 'NFLX', 'SPOT', 'ROKU'
-    ],
-    "☁️ 10. Cyber Security, Quantum & Next-Gen Computing": [
-        'PANW', 'CRWD', 'ZS', 'FTNT', 'OKTA', 'NET', 'IONQ', 'RGTI', 'IBM', 'ORCL'
-    ]
-}
-
-all_tickers = []
-ticker_to_sector = {}
-for sec_name, tickers in sectors_universe.items():
-    for t in tickers:
-        all_tickers.append(t)
-        ticker_to_sector[t] = sec_name
-
-st.sidebar.markdown("### ⚙️ ควบคุมระบบสแกนหุ้น 100 ตัว")
-selected_sec_filter = st.sidebar.selectbox("📂 กรองดูตาม Sector:", ["ทั้งหมด 100 ตัว"] + list(sectors_universe.keys()))
-vol_change_threshold = st.sidebar.slider("🔥 กำหนด %Vol Change ขั้นต่ำเทียบ MA20", min_value=50, max_value=300, value=100, step=25)
-
-def analyze_single_stock(ticker):
-    try:
-        df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-        if df.empty or len(df) < 40:
-            return None
-        
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel(1)
-        df.columns = [str(c).capitalize() for c in df.columns]
-        df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-        
-        df['Vol_MA20'] = df['Volume'].rolling(window=20).mean()
-        df['Vol_Change_Pct'] = ((df['Volume'] - df['Vol_MA20']) / df['Vol_MA20']) * 100
-        
-        current_close = float(df['Close'].iloc[-1])
-        latest_vol_pct = float(df['Vol_Change_Pct'].iloc[-1])
-        
-        def get_poc(sub_df):
-            if sub_df.empty:
-                return current_close
-            try:
-                temp = sub_df.copy()
-                temp['Bin'] = pd.cut(temp['Close'], bins=6)
-                poc_bin = temp.groupby('Bin', observed=False)['Volume'].sum().idxmax()
-                if pd.notna(poc_bin):
-                    return round(float(poc_bin.mid), 2)
-            except:
-                pass
-            return round(float(sub_df['Close'].mean()), 2)
-
-        df_1w = df.tail(5)
-        df_1m = df.tail(20)
-        df_2m = df.tail(40)
-
-        poc_1w = get_poc(df_1w)
-        poc_1m = get_poc(df_1m)
-        poc_2m = get_poc(df_2m)
-
-        dist_1w = round(((current_close - poc_1w) / poc_1w) * 100, 2)
-        dist_1m = round(((current_close - poc_1m) / poc_1m) * 100, 2)
-        dist_2m = round(((current_close - poc_2m) / poc_2m) * 100, 2)
-
-        return {
-            'Ticker': ticker,
-            'Sector': ticker_to_sector[ticker],
-            'Price': round(current_close, 2),
-            'Vol_%_Change': round(latest_vol_pct, 2),
-            'POC_1W': poc_1w,
-            'Dist_1W_%': dist_1w,
-            'POC_1M': poc_1m,
-            'Dist_1M_%': dist_1m,
-            'POC_2M': poc_2m,
-            'Dist_2M_%': dist_2m
+@st.cache_data(ttl=86400)
+def get_comprehensive_universe():
+    universe = {
+        "💻 Information Technology & Semiconductors (ชิป AI, คลาวด์ & ซอฟต์แวร์ระบบ)": {
+            'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาด (ตัวโปรดที่เราตามงบตลอด)',
+            'AAPL': 'Ecosystem ฮาร์ดแวร์และบริการ, สิทธิบัตรชิป Apple Silicon',
+            'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI',
+            'AVGO': 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon สำหรับดาต้าเซ็นเตอร์',
+            'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก',
+            'ARM': 'เจ้าของสถาปัตยกรรมชิปมือถือและชิป AI ใช้พลังงานต่ำทั่วโลก',
+            'QCOM': 'สิทธิบัตรหลักเทคโนโลยีสื่อสารไร้สาย 5G/6G และ Edge AI ชิป',
+            'INTC': 'การพลิกฟื้นกิจการโรงงานผลิตชิปขั้นสูง (Foundry) และสิทธิบัตร x86',
+            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI',
+            'LRCX': 'เครื่องมือและสิทธิบัตรกระบวนการผลิตเซมิคอนดักเตอร์ระดับนาโน',
+            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก',
+            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลกสำหรับชิปยุคใหม่',
+            'CRM': 'Enterprise Cloud CRM และ AI Agent ผูกขาดฐานลูกค้าองค์กร',
+            'ADBE': 'ซอฟต์แวร์ครีเอทีฟดิจิทัลและสิทธิบัตรเครื่องมือ Generative AI',
+            'NOW': 'แพลตฟอร์ม Workflow Software อัตโนมัติสำหรับองค์กรขนาดใหญ่ระดับโลก',
+            'SNOW': 'แพลตฟอร์มคลาวด์ดาต้าแวร์เฮาส์และการวิเคราะห์ข้อมูลเชิงลึก',
+            'PLTR': 'ซอฟต์แวร์วิเคราะห์ข้อมูล Big Data และ AI ทางทหาร/องค์กร (Gotham/Foundry)'
+        },
+        "🤖 Smart Manufacturing, Industrial Automation & Robotics (โรงงานอัจฉริยะ, หุ่นยนต์ & ระบบอัตโนมัติ)": {
+            'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus และพลังงาน (หุ้นสวิงรอบโปรด)',
+            'CAT': 'เครื่องจักรกลหนัก, ระบบขุดเจาะอัตโนมัติ และยานยนต์เหมืองไร้คนขับอัจฉริยะ',
+            'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง',
+            'HON': 'ระบบอัตโนมัติในโรงงาน, หุ่นยนต์คลังสินค้าอัจฉริยะ และเทคโนโลยีอาคารประหยัดพลังงาน',
+            'EMR': 'ผู้นำนวัตกรรมระบบควบคุมอัตโนมัติระดับอุตสาหกรรม (Industrial Automation & Process Control)',
+            'ROK': 'ซอฟต์แวร์และฮาร์ดแวร์ระบบอัตโนมัติสำหรับโรงงานอัจฉริยะ (The Connected Enterprise)',
+            'FANUY': 'ยักษ์ใหญ่หุ่นยนต์แขนกลอุตสาหกรรมและระบบซีเอ็นซีระดับโลกจากญี่ปุ่น (ผ่าน ADR)',
+            'CGNX': 'เทคโนโลยีระบบประมวลผลภาพ (Machine Vision) และ AI ตรวจสอบคุณภาพสินค้าในโรงงาน',
+            'PATH': 'ซอฟต์แวร์ Enterprise Automation และ Robotic Process Automation (RPA) ขับเคลื่อนองค์กรยุคใหม่',
+            'TER': 'หุ่นยนต์อุตสาหกรรมร่วมปฏิบัติงาน (Cobots) และระบบทดสอบเซมิคอนดักเตอร์ล้ำสมัย'
+        },
+        "🧬 Health Care, Bio-Tech & Medical Robotics (การแพทย์ล้ำสมัย, ไบโอเทค & หุ่นยนต์ผ่าตัด)": {
+            'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก ผูกขาดตลาดร้อยเปอร์เซ็นต์)',
+            'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
+            'NVO': 'นวัตกรรมยารักษาโรคอ้วนและเบาหวานระดับโลก (Wegovy/Ozempic)',
+            'UNH': 'ระบบนิเวศประกันสุขภาพและบริการเทคโนโลยีการแพทย์ขนาดใหญ่',
+            'JNJ': 'ความหลากหลายของเวชภัณฑ์และอุปกรณ์การแพทย์ระดับโลก',
+            'ABBV': 'ยารักษาโรคภูมิคุ้มกันและมะเร็งเฉพาะทางที่มีสิทธิบัตรคุ้มครอง',
+            'MRK': 'นวัตกรรมยารักษามะเร็งระดับโลก (Keytruda)',
+            'PFE': 'นวัตกรรมวัคซีนและเวชภัณฑ์ระดับโลก',
+            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง',
+            'TMO': 'เครื่องมือวิทยาศาสตร์และบริการวิจัยพันธุศาสตร์ระดับโลก',
+            'ABT': 'อุปกรณ์การแพทย์ตรวจวินิจฉัยและโภชนาการทางการแพทย์',
+            'DHR': 'เทคโนโลยีชีวภาพและเครื่องมือวิเคราะห์ทางการแพทย์ขั้นสูง',
+            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)',
+            'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง'
+        },
+        "⚡ Power, Smart Grid, Robotics & Clean Energy (พลังงาน AI, โครงข่ายอัจฉริยะ & ยานยนต์)": {
+            'NEE': 'ยักษ์ใหญ่พลังงานสะอาดและโครงสร้างพื้นฐานกริดไฟฟ้าป้อน Data Center AI',
+            'GEV': 'เทคโนโลยีโครงข่ายไฟฟ้าอัจฉริยะ กังหันลม และระบบขับเคลื่อนพลังงานหลัก',
+            'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center และโรงงาน AI',
+            'PWR': 'ผู้รับเหมาโครงสร้างพื้นฐานระบบไฟฟ้าแรงสูงและดาต้าเซ็นเตอร์เบอร์หนึ่ง',
+            'ENPH': 'เทคโนโลยีไมโครอินเวอร์เตอร์และระบบกักเก็บพลังงานแสงอาทิตย์อัจฉริยะ',
+            'FSLR': 'สิทธิบัตรการผลิตแผงโซลาร์เซลล์เทคโนโลยีฟิล์มบางขั้นสูงในสหรัฐฯ'
+        },
+        "💡 Utilities & Essential Infrastructure (สาธารณูปโภค S&P 500 & พลังงานนิวเคลียร์)": {
+            'CEG': 'ผู้ผลิตพลังงานคาร์บอนด์ต่ำและโรงไฟฟ้านิวเคลียร์รายใหญ่ที่สุดของสหรัฐฯ (พลังงานป้อน AI)',
+            'DUK': 'บริษัทสาธารณูปโภคไฟฟ้าและก๊าซธรรมชาติฐานลูกค้าหลายล้านครัวเรือน กระแสเงินสดมั่นคง',
+            'SO': 'ยักษ์ใหญ่ด้านพลังงานและโครงข่ายไฟฟ้าพลังงานนิวเคลียร์และฟอสซิลสะอาด',
+            'AEP': 'เครือข่ายส่งไฟฟ้าแรงสูงและสาธารณูปโภคไฟฟ้าครอบคลุมหลายรัฐ',
+            'SRE': 'โครงสร้างพื้นฐานก๊าซธรรมชาติและระบบส่งไฟฟ้ากำลังซื้อสูง',
+            'EXC': 'บริษัทโฮลดิ้งสาธารณูปโภคไฟฟ้าและระบบส่งจ่ายพลังงานรายใหญ่'
+        },
+        "💰 Financials & High-Moat Assets (การเงิน, ฟินเทค & โครงสร้างแกร่ง)": {
+            'BRK-B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
+            'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
+            'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค (วิ่งตามรอบ Flow เงิน)',
+            'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
+            'BAC': 'ธนาคารพาณิชย์รายใหญ่และฐานลูกค้ารายย่อยทั่วสหรัฐฯ',
+            'GS': 'วาณิชธนกิจชั้นนำระดับโลกและตลาดทุน',
+            'AXP': 'เครือข่ายบัตรเครดิตกลุ่มลูกค้ากำลังซื้อสูง (High Net Worth)',
+            'BLK': 'ผู้จัดการกองทุนที่ใหญ่ที่สุดในโลก (BlackRock / Aladdin Platform)'
+        },
+        "🌐 Big Platforms & Digital Ecosystem (แพลตฟอร์มโซเชียล, อีคอมเมิร์ซ & สตรีมมิ่ง)": {
+            'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
+            'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
+            'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
+            'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
+            'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต'
         }
-    except Exception:
-        return None
+    }
+    return universe
 
-if st.button("🚀 เริ่มรันเรดาร์สแกนหุ้นนวัตกรรม 100 ตัวรวดดด!"):
-    with st.spinner("กำลังดึงข้อมูลและคำนวณ Multi-Timeframe POC + %Vol Change ของหุ้น 100 ตัว..."):
-        results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            future_to_ticker = {executor.submit(analyze_single_stock, t): t for t in all_tickers}
-            for future in concurrent.futures.as_completed(future_to_ticker):
-                res = future.result()
-                if res is not None:
-                    results.append(res)
+def calculate_timeframe_metrics(df):
+    timeframes = {
+        'เมื่อวันก่อน': 1, '3 วัน': 3, '1 อาทิตย์': 5, 
+        '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40
+    }
+    results = {}
+    
+    try:
+        current_close = float(df['Close'].iloc[-1])
+        baseline_full_avg = float(df['Volume'].mean())
+    except:
+        return {}, 0.0
+
+    for label, days in timeframes.items():
+        try:
+            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
+            high_max = float(sub_df['High'].max())
+            low_min = float(sub_df['Low'].min())
+            start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
+            
+            high_pct = round(((high_max - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            low_pct = round(((low_min - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            total_range_pct = round(((high_max - low_min) / current_close) * 100, 1) if current_close > 0 else 0.0
+            
+            poc_price = None
+            try:
+                hist_sub = sub_df.copy()
+                hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
+                poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
+                if pd.notna(poc_row):
+                    poc_price = round(float(poc_row.mid), 2)
+            except:
+                poc_price = None
+            
+            if poc_price is None:
+                poc_price = round(current_close, 2)
+
+            vol_spike_today_pct = 0.0
+            if len(df) >= (days * 2):
+                recent_vol_avg = df.tail(days)['Volume'].mean()
+                previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
+                if previous_vol_avg > 0:
+                    vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1)
+            elif len(sub_df) >= 2 and days == 1:
+                latest_vol = sub_df['Volume'].iloc[-1]
+                prev_vol = sub_df['Volume'].iloc[-2]
+                if prev_vol > 0:
+                    vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1)
+
+            vol_period_change_pct = 0.0
+            sub_period_avg = sub_df['Volume'].mean()
+            if baseline_full_avg > 0:
+                vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
+            
+            results[label] = {
+                'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
+                'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
+                'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct
+            }
+        except:
+            results[label] = {
+                'start_date': None, 'high': 0.0, 'low': 0.0,
+                'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
+                'poc_price': None, 'vol_spike_today': 0.0, 'vol_period_change': 0.0
+            }
         
-        df_result = pd.DataFrame(results)
-        st.session_state['scan_data_100'] = df_result
-        st.success(f"สแกนสำเร็จเรียบร้อย! ดึงข้อมูลสำเร็จ {len(df_result)} จาก 100 ตัว")
+    try:
+        rsi_2m_avg = round(float(df['RSI'].tail(40).mean()), 2) if len(df) >= 40 else round(float(df['RSI'].mean()), 2)
+    except:
+        rsi_2m_avg = 0.0
+        
+    return results, rsi_2m_avg
 
-if 'scan_data_100' in st.session_state and not st.session_state['scan_data_100'].empty:
-    df_display = st.session_state['scan_data_100']
-    
-    if selected_sec_filter != "ทั้งหมด 100 ตัว":
-        df_display = df_display[df_display['Sector'] == selected_sec_filter]
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    return 100 - (100 / (1 + (gain / loss)))
 
-    st.markdown("---")
-    st.markdown(f"### 📊 ตารางสรุป Multi-Timeframe POC & %Vol Change (แสดง {len(df_display)} ตัว)")
-    st.dataframe(df_display, use_container_width=True)
-    
-    st.markdown("---")
-    st.markdown("### 🔥 หุ้นนวัตกรรมที่เข้าข่าย Volume พุ่งแรงผิดปกติ (Volume Spike Anomaly)")
-    filtered_spike = df_display[df_display['Vol_%_Change'] >= vol_change_threshold]
-    
-    if not filtered_spike.empty:
-        st.success(f"พบหุ้นนวัตกรรมและสิทธิบัตรที่วอลุ่มพุ่งเกินเกณฑ์จำนวน **{len(filtered_spike)} ตัว**:")
-        st.dataframe(filtered_spike, use_container_width=True)
+def friend_expert_analysis(ticker, moat_story, latest_rsi, range_pct, vol_period_change, rsi_2m_avg, tf_data, strategy_mode):
+    try:
+        poc_1m = tf_data.get('1 เดือน', {}).get('poc_price', 0)
+        if poc_1m is None:
+            poc_1m = 0
+    except:
+        poc_1m = 0
+
+    if "สะสม" in strategy_mode:
+        status_tag = "🟡 **[สถานะ: กำลังสะสมพลังในกรอบ / Smart Money Accumulation Zone]**"
+        commentary = (
+            f"เพื่อนว่าตัว **{ticker}** ทรงนี้เข้าตา กราฟแกว่งตัวออกข้างรับความผันผวนตามรอบหุ้นนวัตกรรมและระบบอัตโนมัติ "
+            f"มีฐานราคา POC สำคัญอยู่ที่ประมาณ **${poc_1m}** เหมาะสำหรับทยอยเก็บสะสมทีละไม้แถวโซนแนวรับ ปลอดภัยรอรอบข่าวสิทธิบัตร!"
+        )
     else:
-        st.info("ไม่มีหุ้นตัวไหนในกลุ่มที่ Volume พุ่งเกินเกณฑ์ที่ตั้งไว้ในรอบนี้ ลองปรับลด %Vol Change ดูเพื่อน")
-else:
-    st.info("💡 กดปุ่มสีเขียว **'เริ่มรันเรดาร์สแกนหุ้นนวัตกรรม 100 ตัวรวดดด!'** ด้านบน เพื่อให้เซิร์ฟเวอร์ดึงข้อมูลและคำนวณ Multi-Timeframe POC ทั้ง 10 Sector สดๆ ได้เลยเพื่อน!")
+        status_tag = "🔥 **[สถานะ: โมเมนตัมแรงตามข่าว / Swing Breakout]**"
+        commentary = (
+            f"ตัว **{ticker}** กำลังซิ่งตามกระแสอุตสาหกรรมอัจฉริยะ วอลุ่มหนาและราคาสวิงกว้าง เหมาะกับการเล่นรอบสั้นตามรอบข่าว "
+            f"เกาะติดแนวรับ POC ให้ดี ถ้าไม่หลุดก็ถือรันเทรนด์ต่อได้ยาวๆ"
+        )
+
+    ip_analysis = (
+        f"🔬 **มุมมองสิทธิบัตรและคูเมืองธุรกิจ (IP Moat & Patent Value):** "
+        f"จุดเด่นของ {ticker} คือ *'{moat_story}'* การมีสิทธิบัตรคุ้มครองและเทคโนโลยีล้ำสมัยช่วยสร้างเกราะป้องกันคู่แข่งระยะยาว"
+    )
+
+    return status_tag, commentary, ip_analysis
+
+universe = get_comprehensive_universe()
+
+st.sidebar.markdown("### ⚙️ ตั้งค่าการสแกนหุ้นเล่นรอบ (Mega Custom Universe)")
+selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
+strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดกลยุทธ์การเล่นรอบ", [
+    "1. โหมดสะสมยืดหยุ่น (Range-Bound Swing Accumulation)", 
+    "2. โหมดโมเมนตัมเบรกเอาท์ (Momentum Breakout & Volatility)"
+])
+
+st.markdown(f"## 🎯 สแกนหาหุ้นเล่นรอบตามเทรนด์ใน Sector: **{selected_sector}**")
+
+if st.button("🚀 เริ่มคัดกรองหุ้นตามเกณฑ์เล่นรอบ"):
+    target_tickers = universe[selected_sector]
+    matched_data = []
+    
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_tickers = len(target_tickers)
+    
+    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
+        status_text.text(f"กำลังวิเคราะห์หุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        progress_bar.progress((i + 1) / total_tickers)
+        
+        try:
+            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+            if df.empty or len(df) < 40:
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+            df.columns = [str(c).capitalize() for c in df.columns]
+            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+            df['RSI'] = calculate_rsi(df['Close'], 14)
+            df = df.dropna(subset=['RSI'])
+            if len(df) == 0:
+                continue
+                
+            latest_rsi = float(df['RSI'].iloc[-1])
+            latest_close = float(df['Close'].iloc[-1])
+            
+            recent = df.tail(20).copy()
+            high_max = float(recent['High'].max())
+            low_min = float(recent['Low'].min())
+            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
+            
+            recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
+            last_vol = float(recent['Volume'].iloc[-1])
+            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
+            
+            is_matched = False
+            if "สะสม" in strategy_mode:
+                if range_pct <= 0.22 and 30 <= latest_rsi <= 70:
+                    is_matched = True
+            else:
+                vol_spike = last_vol >= (last_vol_ma * 1.10) if last_vol_ma > 0 else False
+                if range_pct >= 0.03 and latest_rsi >= 40 and vol_spike:
+                    is_matched = True
+
+            if is_matched:
+                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+                tp1_price = round(latest_close * 1.05, 2)
+                
+                status_tag, commentary, ip_analysis = friend_expert_analysis(
+                    ticker, moat_story, latest_rsi, range_pct * 100, vol_period_change, rsi_2m_avg, tf_data, strategy_mode
+                )
+                
+                matched_data.append({
+                    'Ticker': ticker, 'Moat': moat_story,
+                    'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
+                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
+                    'TF_Data': tf_data, 'TP1': tp1_price,
+                    'Low_Min': round(low_min, 2),
+                    'Status_Tag': status_tag, 'Commentary': commentary, 'IP_Analysis': ip_analysis
+                })
+        except:
+            continue
+
+    status_text.empty()
+    progress_bar.empty()
+
+    if matched_data:
+        st.success(f"🎯 คัดกรองหุ้นที่ผ่านเกณฑ์เล่นรอบสำเร็จ พบทั้งหมด **{len(matched_data)} ตัว**!")
+        st.markdown("---")
+        
+        for item in matched_data:
+            ticker = item['Ticker']
+            current_close = item['Close']
+            
+            expander_title = f"🟢 [{ticker}] | ราคา: ${current_close} | กรอบราคา: ±{item['Range_Pct']}% | RSI: {item['RSI_Latest']}"
+            
+            with st.expander(expander_title, expanded=False):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปัจจุบัน", f"${current_close}")
+                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
+                col3.metric("📊 ความกว้างกรอบ (1M)", f"{item['Range_Pct']}%")
+                col4.metric("🎯 เป้าทำกำไร (TP1 5%)", f"${item['TP1']}")
+                
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางวิเคราะห์กรอบเวลา, จุดศูนย์กลางราคา (POC) และ Rolling Volume Dynamics")
+                tf_rows = []
+                for tf_name in ['เมื่อวันก่อน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
+                    if tf_name in item['TF_Data']:
+                        info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ช่วงเวลา': tf_name, 'วันที่เริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                            'ราคาสูงสุด (High)': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                            'ราคาต่ำสุด (Low)': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                            '📈 Vol เฉลี่ยเทียบอดีต': f"{info['vol_period_change']:+.1f}%"
+                        })
+                st.table(pd.DataFrame(tf_rows))
+
+                st.markdown("---")
+                st.markdown("### 💬 มุมมองเพื่อนซี้ (สถานะ, กลยุทธ์เข้าซื้อ & เกมเจ้ามือ)")
+                st.markdown(item['Status_Tag'])
+                st.info(item['Commentary'])
+                
+                st.markdown(f"📍 **จุดเข้าซื้อเชิงกลยุทธ์ (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (โซนเก็บของไส้เทียนล่างอ้างอิงฐานราคา)")
+                st.success(item['IP_Analysis'])
+                st.markdown(f"🔬 **จุดแข็งสิทธิบัตร & IP Moat:** **{item['Moat']}**")
+
+        st.markdown("---")
+    else:
+        st.warning("รอบนี้ไม่มีหุ้นตัวไหนผ่านเกณฑ์ ลองสลับ Sector หรือปรับเปลี่ยนโหมดดูอีกทีนะเพื่อน!")
