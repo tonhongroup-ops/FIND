@@ -5,7 +5,7 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (S&P 500 Full Universe)")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Universal Custom Ticker Added)")
 st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
 
 @st.cache_data(ttl=86400)
@@ -205,26 +205,42 @@ def calculate_rsi(series, period=14):
 universe = get_comprehensive_universe()
 
 st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้นเล่นรอบ")
-selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
-strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดการค้นหาเจ้ามือสะสม", [
-    "1. โหมดสะสมพลังออกข้าง (Range-Bound Accumulation & Base Building)", 
-    "2. โหมดเจ้ามือเริ่มเคาะขยับเบรกเอาท์ (Momentum Breakout & Volume Surge)"
-])
-rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 20, 50, 35)
-rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
+scan_mode = st.sidebar.radio("📌 เลือกโหมดการค้นหา", ["📂 สแกนตาม Sector ใน Universe", "🔎 ค้นหา Ticker อิสระรายตัว (Custom Search)"])
 
-st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบใน Sector: **{selected_sector}**")
+if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+    selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
+    strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดการค้นหาเจ้ามือสะสม", [
+        "1. โหมดสะสมพลังออกข้าง (Range-Bound Accumulation & Base Building)", 
+        "2. โหมดเจ้ามือเริ่มเคาะขยับเบรกเอาท์ (Momentum Breakout & Volume Surge)"
+    ])
+    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 20, 50, 35)
+    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
+else:
+    st.sidebar.markdown("---")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RXRX, PLTR, COIN)", "RXRX")
+    st.sidebar.info("ระบบจะดึงข้อมูลกราฟและแกะรอยหุ้นตัวนี้แบบเจาะลึกทันทีโดยไม่สนเงื่อนไขกรอง Sector!")
 
-if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แกะรอยเจ้ามือสะสม"):
-    target_tickers = universe[selected_sector]
-    matched_data = []
+st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
+
+if st.button("🚀 เริ่มวิเคราะห์เจาะลึกหุ้นเป้าหมาย"):
+    target_tickers = {}
     
+    if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+        target_tickers = universe[selected_sector]
+    else:
+        cleaned_ticker = custom_ticker_input.strip().upper()
+        if cleaned_ticker:
+            target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
+        else:
+            st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
+
+    matched_data = []
     progress_bar = st.progress(0)
     status_text = st.empty()
     total_tickers = len(target_tickers)
     
     for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังสแกนแกะรอยหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        status_text.text(f"กำลังดึงข้อมูลและแกะรอยหุ้น [{ticker}] ({i+1}/{total_tickers})...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
@@ -253,14 +269,15 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แก�
             last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
             vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
-            is_matched = False
-            if "สะสม" in strategy_mode:
-                if range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max:
-                    is_matched = True
-            else:
-                vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
-                if range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike:
-                    is_matched = True
+            is_matched = True
+            if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+                if "สะสม" in strategy_mode:
+                    if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
+                        is_matched = False
+                else:
+                    vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
+                    if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
+                        is_matched = False
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
@@ -280,7 +297,7 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แก�
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎯 เรดาร์ตรวจพบหุ้นเข้าเกณฑ์ซุ่มสะสม / เล่นรอบ ทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
@@ -289,7 +306,7 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แก�
             
             expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
             
-            with st.expander(expander_title, expanded=False):
+            with st.expander(expander_title, expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
                 col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
@@ -315,13 +332,13 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แก�
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร)")
-                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้อยู่ในช่วงตั้งฐานราคา (Base Building) สังเกตจากตาราง Multi-Timeframe ถ้าช่วงสัปดาห์ก่อนๆ โวลุ่มเริ่มหนาผิดปกติแต่ราคายังนิ่ง แสดงว่าเจ้ามือทยอยเก็บของเงียบๆ รอข่าวประกาศผลประกอบการหรือความคืบหน้าสิทธิบัตรนวัตกรรม!")
+                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
+                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอข่าวบวกหรือผลประกอบการรอบถัดไป!")
                 st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
                 st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
-                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือลุ้นรันเทรนด์ยาวๆ ตามกระแสข่าวสิทธิบัตรหลักของบริษัท")
+                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์ตามกระแสเงินทุนรอบใหญ่")
 
         st.markdown("---")
     else:
-        st.warning("รอบนี้ไม่มีหุ้นตัวไหนเข้าเกณฑ์ ลองปรับช่วง RSI หรือสลับกลุ่ม Sector ดูใหม่นะเพื่อน!")
-            
+        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือข้อมูลย้อนหลังไม่เพียงพอ ลองเช็กชื่อตัวย่อใหม่อีกทีนะเพื่อน!")
+                        
