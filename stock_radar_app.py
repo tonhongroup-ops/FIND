@@ -11,7 +11,7 @@ st.markdown("### เรดาร์สแกนหุ้นนวัตกรร
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
     universe = {
-        "💻 1. Information Technology, AI & Semiconductors": {
+        "💻 1. Information Technology, AI & Semiconductors (XLK / SMH)": {
             'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาดอันดับหนึ่ง',
             'AAPL': 'Ecosystem ฮาร์ดแวร์, บริการ & สิทธิบัตรชิป Apple Silicon',
             'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI',
@@ -38,7 +38,7 @@ def get_comprehensive_universe():
             'CRWD': 'ระบบป้องกันภัยคุกคามทางไซเบอร์แบบ Cloud-native อัจฉริยะ',
             'FTNT': 'โครงสร้างพื้นฐานความปลอดภัยเครือข่ายและไฟร์วอลล์สิทธิบัตรแกร่ง'
         },
-        "🤖 2. Smart Manufacturing, Industrial Robotics & Clean Energy": {
+        "🤖 2. Smart Manufacturing, Industrial Robotics & Clean Energy (XLI / XLE)": {
             'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus',
             'CAT': 'เครื่องจักรกลหนัก, ระบบขุดเจาะอัตโนมัติ และยานยนต์เหมืองไร้คนขับอัจฉริยะ',
             'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง',
@@ -55,7 +55,7 @@ def get_comprehensive_universe():
             'LIN': 'ก๊าซอุตสาหกรรมและนวัตกรรมเคมีภัณฑ์ไฮโดรเจนสะอาดระดับโลก',
             'DELL': 'เซิร์ฟเวอร์โครงสร้างพื้นฐาน AI Infrastructure และฮาร์ดแวร์องค์กร'
         },
-        "🧬 3. Biotech, Healthcare & Medical Robotics": {
+        "🧬 3. Biotech, Healthcare & Medical Robotics (XLV)": {
             'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก ผูกขาดตลาดร้อยเปอร์เซ็นต์)',
             'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
             'NVO': 'นวัตกรรมยารักษาโรคอ้วนและเบาหวานระดับโลก (Wegovy/Ozempic)',
@@ -72,7 +72,19 @@ def get_comprehensive_universe():
             'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
             'ZTS': 'เวชภัณฑ์และนวัตกรรมสุขภาพสัตว์เลี้ยงระดับโลก'
         },
-        "🌐 4. Big Platforms, Fintech & High-Moat Financials": {
+        "🛡️ 4. Consumer Staples & Defensive Moat (XLP)": {
+            'PG': 'เจ้าพ่อสินค้าอุปโภคบริโภคระดับโลก สิทธิบัตรนวัตกรรมสินค้าและ Pricing Power สูง',
+            'PEP': 'อาณาจักรขนมขบเคี้ยวและเครื่องดื่ม ซัพพลายเชนอัจฉริยะ',
+            'KO': 'แบรนด์เครื่องดื่มระดับโลกและระบบจัดจำหน่ายที่ไม่มีใครเทียบได้',
+            'WMT': 'ยักษ์ใหญ่ค้าปลีก โลจิสติกส์อัจฉริยะ และระบบจัดการสินค้าคงคลัง',
+            'COST': 'โมเดลธุรกิจสมาชิก คลังสินค้า และความภักดีของลูกค้าสูงมาก',
+            'PM': 'นวัตกรรมผลิตภัณฑ์ไร้ควัน (IQOS) และสิทธิบัตรยาสูบทางเลือก',
+            'MO': 'ผู้นำตลาดผลิตภัณฑ์นิโคตินทางเลือกและเงินสดท่วมพอร์ต',
+            'CL': 'ผู้นำผลิตภัณฑ์ทำความสะอาดและดูแลช่องปากระดับโลก',
+            'KMB': 'นวัตกรรมวัสดุเส้นใยและผลิตภัณฑ์สุขภัณฑ์ (Huggies/Kleenex)',
+            'GIS': 'นวัตกรรมอาหารสำเร็จรูปและแบรนด์อาหารแปรรูปชั้นนำ'
+        },
+        "🌐 5. Big Platforms, Fintech & High-Moat Financials (XLC / XLF)": {
             'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
             'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
             'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
@@ -92,14 +104,11 @@ def get_comprehensive_universe():
             'SQ': 'ระบบนิเวศการเงินและบล็อกเชนรายย่อย',
             'COIN': 'โครงสร้างพื้นฐานแลกเปลี่ยนสินทรัพย์ดิจิทัลและคริปโต',
             'HOOD': 'แพลตฟอร์มซื้อขายสินทรัพย์ดิจิทัลและหุ้นรุ่นใหม่',
-            'FI': 'เทคโนโลยีบริการการเงินและระบบประมวลผลธนาคาร',
-            'FIS': 'ฟินเทคระบบธนาคารระดับองค์กร',
-            'GPN': 'เทคโนโลยีการชำระเงินร้านค้าทั่วโลก',
             'SPGI': 'ข้อมูลเรตติ้งและดัชนีมาตรฐานการเงินโลก',
             'MCO': 'การจัดอันดับความน่าเชื่อถือทางการเงินระดับโลก',
             'ICE': 'ตลาดหลักทรัพย์และแพลตฟอร์มซื้อขายอนุพันธ์ระดับโลก'
         },
-        "🚀 5. Space Tech, Defense & Advanced Materials": {
+        "🚀 6. Space Tech, Defense & Advanced Materials (XLB)": {
             'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ',
             'RTX': 'เทคโนโลยีการบินอวกาศและระบบเรดาร์ป้องกันประเทศ',
             'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง',
@@ -315,3 +324,4 @@ if st.button("🚀 สแกนหาหุ้นเล่นรอบ & แก�
         st.markdown("---")
     else:
         st.warning("รอบนี้ไม่มีหุ้นตัวไหนเข้าเกณฑ์ ลองปรับช่วง RSI หรือสลับกลุ่ม Sector ดูใหม่นะเพื่อน!")
+            
