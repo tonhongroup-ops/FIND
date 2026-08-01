@@ -319,7 +319,7 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
             st.markdown("---")
             
             for item in matched_data:
-                ticker = item['Ticker']`
+                ticker = item['Ticker']
                 current_close = item['Close']
                 
                 expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
@@ -348,4 +348,4 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                                 '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
                                 '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
                             })
-                
+                 
