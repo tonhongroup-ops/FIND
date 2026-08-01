@@ -1,12 +1,15 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import requests
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Universal Custom Ticker Added)")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Twelve Data Powered)")
 st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+
+# ช่องกรอก API Key ของ Twelve Data
+twelve_api_key = st.sidebar.text_input("🔑 ใส่ Twelve Data API Key ของมึงที่นี่", type="password", value="")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -218,127 +221,130 @@ if scan_mode == "📂 สแกนตาม Sector ใน Universe":
 else:
     st.sidebar.markdown("---")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RXRX, PLTR, COIN)", "RXRX")
-    st.sidebar.info("ระบบจะดึงข้อมูลกราฟและแกะรอยหุ้นตัวนี้แบบเจาะลึกทันทีโดยไม่สนเงื่อนไขกรอง Sector!")
+    st.sidebar.info("ระบบจะดึงข้อมูลผ่าน Twelve Data และแกะรอยหุ้นตัวนี้แบบเจาะลึกทันที!")
 
 st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
 
 if st.button("🚀 เริ่มวิเคราะห์เจาะลึกหุ้นเป้าหมาย"):
-    target_tickers = {}
-    
-    if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-        target_tickers = universe[selected_sector]
+    if not twelve_api_key:
+        st.error("เพื่อน! อย่าลืมใส่ Twelve Data API Key ของมึงที่ Sidebar ด้านซ้ายก่อนนะ ไม่งั้นดึงข้อมูลไม่ได้โว้ย!")
     else:
-        cleaned_ticker = custom_ticker_input.strip().upper()
-        if cleaned_ticker:
-            target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
+        target_tickers = {}
+        
+        if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+            target_tickers = universe[selected_sector]
         else:
-            st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
+            cleaned_ticker = custom_ticker_input.strip().upper()
+            if cleaned_ticker:
+                target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
+            else:
+                st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
 
-    matched_data = []
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    total_tickers = len(target_tickers)
-    
-    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังดึงข้อมูลและแกะรอยหุ้น [{ticker}] ({i+1}/{total_tickers})...")
-        progress_bar.progress((i + 1) / total_tickers)
+        matched_data = []
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        total_tickers = len(target_tickers)
         
-        try:
-            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty or len(df) < 40:
+        for i, (ticker, moat_story) in enumerate(target_tickers.items()):
+            status_text.text(f"กำลังดึงข้อมูล Twelve Data ของหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+            progress_bar.progress((i + 1) / total_tickers)
+            
+            try:
+                url = f"https://api.twelvedata.com/time_series?symbol={ticker}&interval=1day&outputsize=100&apikey={twelve_api_key}"
+                response = requests.get(url)
+                data = response.json()
+                
+                if "code" in data and data["code"] != 200:
+                    continue
+                if "values" not in data:
+                    continue
+                    
+                df = pd.DataFrame(data["values"])
+                df['datetime'] = pd.to_datetime(df['datetime'])
+                df = df.sort_values('datetime').reset_index(drop=True)
+                df.set_index('datetime', inplace=True)
+                
+                for col in ['open', 'high', 'low', 'close', 'volume']:
+                    df[col] = pd.to_numeric(df[col])
+                df.columns = [c.capitalize() for c in df.columns]
+                
+                df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+                df['RSI'] = calculate_rsi(df['Close'], 14)
+                df = df.dropna(subset=['RSI'])
+                
+                if len(df) < 40:
+                    continue
+                    
+                latest_rsi = float(df['RSI'].iloc[-1])
+                latest_close = float(df['Close'].iloc[-1])
+                
+                recent = df.tail(20).copy()
+                high_max = float(recent['High'].max())
+                low_min = float(recent['Low'].min())
+                range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
+                
+                recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
+                last_vol = float(recent['Volume'].iloc[-1])
+                last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+                
+                is_matched = True
+                if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+                    if "สะสม" in strategy_mode:
+                        if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
+                            is_matched = False
+                    else:
+                        vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
+                        if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
+                            is_matched = False
+
+                if is_matched:
+                    tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+                    tp1_price = round(latest_close * 1.05, 2)
+                    
+                    matched_data.append({
+                        'Ticker': ticker, 'Moat': moat_story,
+                        'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
+                        'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
+                        'TF_Data': tf_data, 'TP1': tp1_price,
+                        'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
+                    })
+            except:
                 continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
-            df.columns = [str(c).capitalize() for c in df.columns]
-            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            df['RSI'] = calculate_rsi(df['Close'], 14)
-            df = df.dropna(subset=['RSI'])
-            if len(df) == 0:
-                continue
+
+        status_text.empty()
+        progress_bar.empty()
+
+        if matched_data:
+            st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายผ่าน Twelve Data ทั้งหมด **{len(matched_data)} ตัว**!")
+            st.markdown("---")
+            
+            for item in matched_data:
+                ticker = item['Ticker']
+                current_close = item['Close']
                 
-            latest_rsi = float(df['RSI'].iloc[-1])
-            latest_close = float(df['Close'].iloc[-1])
-            
-            recent = df.tail(20).copy()
-            high_max = float(recent['High'].max())
-            low_min = float(recent['Low'].min())
-            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
-            
-            recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
-            last_vol = float(recent['Volume'].iloc[-1])
-            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
-            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
-            
-            is_matched = True
-            if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-                if "สะสม" in strategy_mode:
-                    if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = False
-                else:
-                    vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
-                    if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
-                        is_matched = False
-
-            if is_matched:
-                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                tp1_price = round(latest_close * 1.05, 2)
+                expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
                 
-                matched_data.append({
-                    'Ticker': ticker, 'Moat': moat_story,
-                    'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
-                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'TP1': tp1_price,
-                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
-                })
-        except:
-            continue
-
-    status_text.empty()
-    progress_bar.empty()
-
-    if matched_data:
-        st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายทั้งหมด **{len(matched_data)} ตัว**!")
-        st.markdown("---")
-        
-        for item in matched_data:
-            ticker = item['Ticker']
-            current_close = item['Close']
-            
-            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
-            
-            with st.expander(expander_title, expanded=True):
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
-                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
-                col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
-                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
-                
-                st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-                tf_rows = []
-                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
-                    if tf_name in item['TF_Data']:
-                        info = item['TF_Data'][tf_name]
-                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                        tf_rows.append({
-                            'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
-                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
-                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
-                            'กรอบ (Range)': f"{info['range_pct']}%",
-                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
-                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
-                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
-                        })
-                st.table(pd.DataFrame(tf_rows))
-
-                st.markdown("---")
-                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
-                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอข่าวบวกหรือผลประกอบการรอบถัดไป!")
-                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
-                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
-                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์ตามกระแสเงินทุนรอบใหญ่")
-
-        st.markdown("---")
-    else:
-        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือข้อมูลย้อนหลังไม่เพียงพอ ลองเช็กชื่อตัวย่อใหม่อีกทีนะเพื่อน!")
-                        
+                with st.expander(expander_title, expanded=True):
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
+                    col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
+                    col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
+                    col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+                    
+                    st.markdown("---")
+                    st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+                    tf_rows = []
+                    for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                        if tf_name in item['TF_Data']:
+                            info = item['TF_Data'][tf_name]
+                            poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                            tf_rows.append({
+                                'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                                'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                                'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                                'กรอบ (Range)': f"{info['range_pct']}%",
+                                'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                                '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                                '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
+                            })
+                    st.table(pd.DataFrame(tf_rows)
