@@ -5,46 +5,49 @@ import requests
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Twelve Data Powered)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+# ฝัง API Key ตามที่มึงสั่ง ลุยยาวๆ!
+DEFAULT_TWELVE_API_KEY = "62b5e6e62bcc4a1d8532a614d5f2c3e3"
 
-# ช่องกรอก API Key ของ Twelve Data
-twelve_api_key = st.sidebar.text_input("🔑 ใส่ Twelve Data API Key ของมึงที่นี่", type="password", value="")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (By เพื่อนซี้สายหุ้นนวัตกรรม)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรระดับโลก & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+
+# ซ่อน API Key ไว้หลังบ้าน ไม่ต้องกรอกเองแล้วเพื่อน
+twelve_api_key = DEFAULT_TWELVE_API_KEY
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
     universe = {
         "💻 1. Information Technology, AI & Semiconductors (XLK / SMH)": {
-            'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาดอันดับหนึ่ง',
-            'AAPL': 'Ecosystem ฮาร์ดแวร์, บริการ & สิทธิบัตรชิป Apple Silicon',
-            'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI',
-            'AVGO': 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon สำหรับดาต้าเซ็นเตอร์',
-            'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก',
-            'ARM': 'เจ้าของสถาปัตยกรรมชิปมือถือและชิป AI ใช้พลังงานต่ำทั่วโลก',
+            'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาดอันดับหนึ่ง สิทธิบัตรชิปประมวลผลขั้นสูง',
+            'AAPL': 'Ecosystem ฮาร์ดแวร์, บริการ & สิทธิบัตรชิป Apple Silicon และความเป็นส่วนตัว',
+            'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI และสิทธิบัตร Enterprise AI',
+            'AVGO': 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon สำหรับดาต้าเซ็นเตอร์ สิทธิบัตรเฉพาะทาง',
+            'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก สิทธิบัตรสถาปัตยกรรม Zen',
+            'ARM': 'เจ้าของสถาปัตยกรรมชิปมือถือและชิป AI ใช้พลังงานต่ำทั่วโลก เจ้าแห่งไลเซนส์สิทธิบัตร',
             'QCOM': 'สิทธิบัตรหลักเทคโนโลยีสื่อสารไร้สาย 5G/6G และ Edge AI ชิป',
             'INTC': 'การพลิกฟื้นกิจการโรงงานผลิตชิปขั้นสูง (Foundry) และสิทธิบัตร x86',
-            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI',
-            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก',
+            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI สิทธิบัตรการผลิตแรมขั้นสูง',
+            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก สิทธิบัตรเครื่องจักรนาโน',
             'LRCX': 'เครื่องมือและสิทธิบัตรกระบวนการผลิตเซมิคอนดักเตอร์ระดับนาโน',
-            'KLAC': 'ระบบตรวจสอบและควบคุมความสะอาดในการผลิตชิปขั้นสูง',
-            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลกสำหรับชิปยุคใหม่',
+            'KLAC': 'ระบบตรวจสอบและควบคุมความสะอาดในการผลิตชิปขั้นสูง สิทธิบัตร AI Inspection',
+            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลก สิทธิบัตรแสงความยาวคลื่น extreme ultraviolet',
             'ADI': 'เซมิคอนดักเตอร์ระบบอนาล็อกและอุตสาหกรรมอัจฉริยะ',
             'TXN': 'ชิปประมวลผลอนาล็อกและระบบฝังตัวความน่าเชื่อถือสูง',
             'MCHP': 'ไมโครคอนโทรลเลอร์และเซมิคอนดักเตอร์อัจฉริยะ',
             'NOW': 'แพลตฟอร์ม Workflow AI อัตโนมัติสำหรับองค์กรขนาดใหญ่ระดับโลก',
             'CRM': 'Enterprise Cloud CRM และ AI Agent ผูกขาดฐานลูกค้าองค์กร',
-            'ADBE': 'ซอฟต์แวร์ครีเอทีฟดิจิทัลและสิทธิบัตรเครื่องมือ Generative AI',
+            'ADBE': 'ซอฟต์แวร์ครีเอทีฟดิจิทัลและสิทธิบัตรเครื่องมือ Generative AI ล้ำสมัย',
             'SNOW': 'แพลตฟอร์มคลาวด์ดาต้าแวร์เฮาส์และการวิเคราะห์ข้อมูลเชิงลึก',
             'PLTR': 'ซอฟต์แวร์วิเคราะห์ข้อมูล Big Data และ AI ทางทหาร/องค์กร (Gotham/Foundry)',
-            'ANET': 'โครงข่ายดาต้าเซ็นเตอร์ความเร็วสูงพิเศษสำหรับ AI Infra',
+            'ANET': 'โครงข่ายดาต้าเซ็นเตอร์ความเร็วสูงพิเศษสำหรับ AI Infra สิทธิบัตรความเร็วเครือข่าย',
             'PANW': 'ผู้นำระบบความปลอดภัยไซเบอร์ระดับองค์กร (Cybersecurity Moat)',
             'CRWD': 'ระบบป้องกันภัยคุกคามทางไซเบอร์แบบ Cloud-native อัจฉริยะ',
             'FTNT': 'โครงสร้างพื้นฐานความปลอดภัยเครือข่ายและไฟร์วอลล์สิทธิบัตรแกร่ง'
         },
         "🤖 2. Smart Manufacturing, Industrial Robotics & Clean Energy (XLI / XLE)": {
-            'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus',
+            'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus และสิทธิบัตรแบตเตอรี่',
             'CAT': 'เครื่องจักรกลหนัก, ระบบขุดเจาะอัตโนมัติ และยานยนต์เหมืองไร้คนขับอัจฉริยะ',
-            'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง',
+            'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง สิทธิบัตรหุ่นยนต์เกษตร',
             'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center และโรงงาน AI',
             'GEV': 'เทคโนโลยีโครงข่ายไฟฟ้าอัจฉริยะ กังหันลม และระบบขับเคลื่อนพลังงานหลัก',
             'NEE': 'ยักษ์ใหญ่พลังงานสะอาดและโครงสร้างพื้นฐานกริดไฟฟ้าป้อน Data Center AI',
@@ -55,23 +58,23 @@ def get_comprehensive_universe():
             'ROK': 'ซอฟต์แวร์และฮาร์ดแวร์ระบบอัตโนมัติสำหรับโรงงานอัจฉริยะ (The Connected Enterprise)',
             'EMR': 'ผู้นำนวัตกรรมระบบควบคุมอัตโนมัติระดับอุตสาหกรรม (Industrial Automation)',
             'PWR': 'ผู้รับเหมาโครงสร้างพื้นฐานระบบไฟฟ้าแรงสูงและดาต้าเซ็นเตอร์เบอร์หนึ่ง',
-            'LIN': 'ก๊าซอุตสาหกรรมและนวัตกรรมเคมีภัณฑ์ไฮโดรเจนสะอาดระดับโลก',
+            'LIN': 'ก๊าซอุตสาหกรรมและนวัตกรรมเคมีภัณฑ์ไฮโดรเจนสะอาดระดับโลก สิทธิบัตรกระบวนการผลิต',
             'DELL': 'เซิร์ฟเวอร์โครงสร้างพื้นฐาน AI Infrastructure และฮาร์ดแวร์องค์กร'
         },
         "🧬 3. Biotech, Healthcare & Medical Robotics (XLV)": {
             'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก ผูกขาดตลาดร้อยเปอร์เซ็นต์)',
-            'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
+            'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound) สิทธิบัตรโมเลกุลยา',
             'NVO': 'นวัตกรรมยารักษาโรคอ้วนและเบาหวานระดับโลก (Wegovy/Ozempic)',
             'UNH': 'ระบบนิเวศประกันสุขภาพและบริการเทคโนโลยีการแพทย์ขนาดใหญ่',
-            'JNJ': 'ความหลากหลายของเวชภัณฑ์และอุปกรณ์การแพทย์ระดับโลก',
+            'JNJ': 'ความหลากหลายของเวชภัณฑ์และอุปกรณ์การแพทย์ระดับโลก สิทธิบัตรนวัตกรรมยา',
             'ABBV': 'ยารักษาโรคภูมิคุ้มกันและมะเร็งเฉพาะทางที่มีสิทธิบัตรคุ้มครอง',
-            'MRK': 'นวัตกรรมยารักษามะเร็งระดับโลก (Keytruda)',
+            'MRK': 'นวัตกรรมยารักษามะเร็งระดับโลก (Keytruda) สิทธิบัตรภูมิคุ้มกันบำบัด',
             'PFE': 'นวัตกรรมวัคซีนและเวชภัณฑ์ระดับโลก',
-            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง',
+            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง สิทธิบัตรยีนบำบัด',
             'TMO': 'เครื่องมือวิทยาศาสตร์และบริการวิจัยพันธุศาสตร์ระดับโลก',
             'ABT': 'อุปกรณ์การแพทย์ตรวจวินิจฉัยและโภชนาการทางการแพทย์',
             'DHR': 'เทคโนโลยีชีวภาพและเครื่องมือวิเคราะห์ทางการแพทย์ขั้นสูง',
-            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)',
+            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis) สิทธิบัตรโมเลกุลขั้นสูง',
             'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
             'ZTS': 'เวชภัณฑ์และนวัตกรรมสุขภาพสัตว์เลี้ยงระดับโลก'
         },
@@ -89,7 +92,7 @@ def get_comprehensive_universe():
         },
         "🌐 5. Big Platforms, Fintech & High-Moat Financials (XLC / XLF)": {
             'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
-            'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
+            'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem สิทธิบัตรอัลกอริทึม',
             'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
             'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
             'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต',
@@ -112,15 +115,15 @@ def get_comprehensive_universe():
             'ICE': 'ตลาดหลักทรัพย์และแพลตฟอร์มซื้อขายอนุพันธ์ระดับโลก'
         },
         "🚀 6. Space Tech, Defense & Advanced Materials (XLB)": {
-            'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ',
+            'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ สิทธิบัตรเทคโนโลยีการบิน',
             'RTX': 'เทคโนโลยีการบินอวกาศและระบบเรดาร์ป้องกันประเทศ',
-            'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง',
+            'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง สิทธิบัตรลับทางทหาร',
             'BA': 'อากาศยานพาณิชย์และเทคโนโลยีอวกาศระดับโลก',
-            'TDG': 'ชิ้นส่วนอากาศยานเฉพาะทางที่มีกำไรสุทธิสูง',
+            'TDG': 'ชิ้นส่วนอากาศยานเฉพาะทางที่มีกำไรสุทธิสูงและสิทธิบัตรผูกขาด',
             'HEI': 'อุปกรณ์การบินและชิ้นส่วนทดแทนที่มีสิทธิบัตรคุ้มครอง',
-            'RKLB': 'ผู้นำการปล่อยจรวดอวกาศเชิงพาณิชย์และดาวเทียมวงโคจรต่ำ',
-            'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง',
-            'DD': 'นวัตกรรมวัสดุศาสตร์ขั้นสูงและอิเล็กทรอนิกส์เคมี',
+            'RKLB': 'ผู้นำการปล่อยจรวดอวกาศเชิงพาณิชย์และดาวเทียมวงโคจรต่ำ สิทธิบัตรจรวดรีไซเคิล',
+            'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง สิทธิบัตรเสาสัญญาณในอวกาศ',
+            'DD': 'นวัตกรรมวัสดุศาสตร์ขั้นสูงและอิเล็กทรอนิกส์เคมี สิทธิบัตรโพลีเมอร์',
             'EMN': 'วัสดุพิเศษและโพลิเมอร์นวัตกรรมเพื่อความยั่งยืน'
         }
     }
@@ -221,131 +224,141 @@ if scan_mode == "📂 สแกนตาม Sector ใน Universe":
 else:
     st.sidebar.markdown("---")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RXRX, PLTR, COIN)", "RXRX")
-    st.sidebar.info("ระบบจะดึงข้อมูลผ่าน Twelve Data และแกะรอยหุ้นตัวนี้แบบเจาะลึกทันที!")
+    st.sidebar.info("ระบบพร้อมดึงข้อมูลTwelve Data และแกะรอยหุ้นตัวนี้แบบเจาะลึกทันที!")
 
 st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
 
 if st.button("🚀 เริ่มวิเคราะห์เจาะลึกหุ้นเป้าหมาย"):
-    if not twelve_api_key:
-        st.error("เพื่อน! อย่าลืมใส่ Twelve Data API Key ของมึงที่ Sidebar ด้านซ้ายก่อนนะ ไม่งั้นดึงข้อมูลไม่ได้โว้ย!")
+    target_tickers = {}
+    
+    if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+        target_tickers = universe[selected_sector]
     else:
-        target_tickers = {}
-        
-        if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-            target_tickers = universe[selected_sector]
+        cleaned_ticker = custom_ticker_input.strip().upper()
+        if cleaned_ticker:
+            target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
         else:
-            cleaned_ticker = custom_ticker_input.strip().upper()
-            if cleaned_ticker:
-                target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
-            else:
-                st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
+            st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
 
-        matched_data = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        total_tickers = len(target_tickers)
+    matched_data = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_tickers = len(target_tickers)
+    
+    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
+        status_text.text(f"กำลังดึงข้อมูล Twelve Data ของหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        progress_bar.progress((i + 1) / total_tickers)
         
-        for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-            status_text.text(f"กำลังดึงข้อมูล Twelve Data ของหุ้น [{ticker}] ({i+1}/{total_tickers})...")
-            progress_bar.progress((i + 1) / total_tickers)
+        try:
+            url = f"https://api.twelvedata.com/time_series?symbol={ticker}&interval=1day&outputsize=100&apikey={twelve_api_key}"
+            response = requests.get(url)
+            data = response.json()
             
-            try:
-                url = f"https://api.twelvedata.com/time_series?symbol={ticker}&interval=1day&outputsize=100&apikey={twelve_api_key}"
-                response = requests.get(url)
-                data = response.json()
-                
-                if "code" in data and data["code"] != 200:
-                    continue
-                if "values" not in data:
-                    continue
-                    
-                df = pd.DataFrame(data["values"])
-                df['datetime'] = pd.to_datetime(df['datetime'])
-                df = df.sort_values('datetime').reset_index(drop=True)
-                df.set_index('datetime', inplace=True)
-                
-                for col in ['open', 'high', 'low', 'close', 'volume']:
-                    df[col] = pd.to_numeric(df[col])
-                df.columns = [c.capitalize() for c in df.columns]
-                
-                df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-                df['RSI'] = calculate_rsi(df['Close'], 14)
-                df = df.dropna(subset=['RSI'])
-                
-                if len(df) < 40:
-                    continue
-                    
-                latest_rsi = float(df['RSI'].iloc[-1])
-                latest_close = float(df['Close'].iloc[-1])
-                
-                recent = df.tail(20).copy()
-                high_max = float(recent['High'].max())
-                low_min = float(recent['Low'].min())
-                range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
-                
-                recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
-                last_vol = float(recent['Volume'].iloc[-1])
-                last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
-                
-                is_matched = True
-                if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-                    if "สะสม" in strategy_mode:
-                        if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
-                            is_matched = False
-                    else:
-                        vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
-                        if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
-                            is_matched = False
-
-                if is_matched:
-                    tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                    tp1_price = round(latest_close * 1.05, 2)
-                    
-                    matched_data.append({
-                        'Ticker': ticker, 'Moat': moat_story,
-                        'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
-                        'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                        'TF_Data': tf_data, 'TP1': tp1_price,
-                        'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
-                    })
-            except:
+            if "code" in data and data["code"] != 200:
                 continue
-
-        status_text.empty()
-        progress_bar.empty()
-
-        if matched_data:
-            st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายผ่าน Twelve Data ทั้งหมด **{len(matched_data)} ตัว**!")
-            st.markdown("---")
+            if "values" not in data:
+                continue
+                
+            df = pd.DataFrame(data["values"])
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df = df.sort_values('datetime').reset_index(drop=True)
+            df.set_index('datetime', inplace=True)
             
-            for item in matched_data:
-                ticker = item['Ticker']
-                current_close = item['Close']
+            for col in ['open', 'high', 'low', 'close', 'volume']:
+                df[col] = pd.to_numeric(df[col])
+            df.columns = [c.capitalize() for c in df.columns]
+            
+            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+            df['RSI'] = calculate_rsi(df['Close'], 14)
+            df = df.dropna(subset=['RSI'])
+            
+            if len(df) < 40:
+                continue
                 
-                expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
+            latest_rsi = float(df['RSI'].iloc[-1])
+            latest_close = float(df['Close'].iloc[-1])
+            
+            recent = df.tail(20).copy()
+            high_max = float(recent['High'].max())
+            low_min = float(recent['Low'].min())
+            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
+            
+            recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
+            last_vol = float(recent['Volume'].iloc[-1])
+            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+            
+            is_matched = True
+            if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+                if "สะสม" in strategy_mode:
+                    if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
+                        is_matched = False
+                else:
+                    vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
+                    if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
+                        is_matched = False
+
+            if is_matched:
+                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+                tp1_price = round(latest_close * 1.05, 2)
                 
-                with st.expander(expander_title, expanded=True):
-                    col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
-                    col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
-                    col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
-                    col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
-                    
-                    st.markdown("---")
-                    st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-                    tf_rows = []
-                    for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
-                        if tf_name in item['TF_Data']:
-                            info = item['TF_Data'][tf_name]
-                            poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                            tf_rows.append({
-                                'ช่วงเวลา': tf_name, 
-                                'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
-                                'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
-                                'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
-                                'กรอบ (Range)': f"{info['range_pct']}%",
-                                'POC (ฐานราคาหนาแน่นสุด)': poc_display,
-                                '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
-                                '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
-                            })
-                 
+                matched_data.append({
+                    'Ticker': ticker, 'Moat': moat_story,
+                    'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
+                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
+                    'TF_Data': tf_data, 'TP1': tp1_price,
+                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
+                })
+        except:
+            continue
+
+    status_text.empty()
+    progress_bar.empty()
+
+    if matched_data:
+        st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายผ่าน Twelve Data ทั้งหมด **{len(matched_data)} ตัว**!")
+        st.markdown("---")
+        
+        for item in matched_data:
+            ticker = item['Ticker']
+            current_close = item['Close']
+            
+            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
+            
+            with st.expander(expander_title, expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
+                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
+                col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
+                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+                
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+                tf_rows = []
+                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                    if tf_name in item['TF_Data']:
+                        info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ช่วงเวลา': tf_name, 
+                            'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
+                        })
+                
+                df_display = pd.DataFrame(tf_rows)
+                st.table(df_display)
+
+                st.markdown("---")
+                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
+                st.info(f"เพื่อนวิเคราะห์ให้ว่าตัว **{ticker}** ตัวนี้ พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe ผ่าน Twelve Data ฟ้องชัดเจนว่า Smart Money กำลังทยอยตั้งฐานสะสมหุ้น (Accumulation Phase) เพื่อรอข่าวผลประกอบการและการอนุมัติสิทธิบัตรนวัตกรรมรอบถัดไป!")
+                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
+                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
+                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถวแนวต้าน **${item['TP1']}** หรือรันเทรนด์ตามกระแสเงินทุนรอบใหญ่ของกองทุน")
+
+        st.markdown("---")
+    else:
+        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือโควต้า API อาจจะมีปัญหา ลองเช็กการเชื่อมต่อดูอีกทีนะเพื่อน!")
