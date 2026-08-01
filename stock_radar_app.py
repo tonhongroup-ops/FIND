@@ -319,7 +319,7 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
             st.markdown("---")
             
             for item in matched_data:
-                ticker = item['Ticker']
+                ticker = item['Ticker']`
                 current_close = item['Close']
                 
                 expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
@@ -339,7 +339,8 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                             info = item['TF_Data'][tf_name]
                             poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
                             tf_rows.append({
-                                'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                                'ช่วงเวลา': tf_name, 
+                                'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
                                 'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
                                 'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
                                 'กรอบ (Range)': f"{info['range_pct']}%",
@@ -347,4 +348,4 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                                 '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
                                 '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
                             })
-                    st.table(pd.DataFrame(tf_rows)
+                
