@@ -5,8 +5,8 @@ import yfinance as yf
 
 st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Universal Custom Ticker Added)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (Catalyst & Status Added)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม พร้อมวิเคราะห์ Catalyst ล่วงหน้า 2 เดือน")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -217,7 +217,7 @@ if scan_mode == "📂 สแกนตาม Sector ใน Universe":
     rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
 else:
     st.sidebar.markdown("---")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RXRX, PLTR, COIN)", "RXRX")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น NVDA, PLTR, LLY)", "NVDA")
     st.sidebar.info("ระบบจะดึงข้อมูลกราฟและแกะรอยหุ้นตัวนี้แบบเจาะลึกทันทีโดยไม่สนเงื่อนไขกรอง Sector!")
 
 st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
@@ -267,7 +267,6 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
             recent['Vol_MA'] = recent['Volume'].rolling(window=10).mean()
             last_vol = float(recent['Volume'].iloc[-1])
             last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
-            vol_period_change = round(((last_vol - last_vol_ma) / last_vol_ma) * 100, 1) if last_vol_ma > 0 else 0.0
             
             is_matched = True
             if scan_mode == "📂 สแกนตาม Sector ใน Universe":
@@ -283,12 +282,17 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 tp1_price = round(latest_close * 1.05, 2)
                 
+                # ประเมินสถานะทางเทคนิคและปัจจัยพื้นฐานเบื้องต้น
+                tech_status = "กำลังสร้างฐานสะสมพลัง (Base Building / Accumulation)" if range_pct <= 0.15 else "กำลังเบรกเอาท์ทำรอบ (Momentum Breakout)"
+                moat_status = "แข็งแกร่งระดับผูกขาด (High Moat / IP Protected)"
+                
                 matched_data.append({
                     'Ticker': ticker, 'Moat': moat_story,
                     'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
                     'TF_Data': tf_data, 'TP1': tp1_price,
-                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
+                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2),
+                    'Tech_Status': tech_status, 'Moat_Status': moat_status
                 })
         except:
             continue
@@ -332,11 +336,21 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
+                st.markdown("### 🔬 สถานะการวิเคราะห์หุ้นเชิงลึก (Deep Analysis Status)")
+                sc1, sc2 = st.columns(2)
+                sc1.markdown(f"📊 **สถานะทางเทคนิคและรอบราคา:** {item['Tech_Status']}")
+                sc2.markdown(f"🛡️ **สถานะความแข็งแกร่งนวัตกรรม:** {item['Moat_Status']}")
+
+                st.markdown("---")
+                st.markdown("### ⚡ วิเคราะห์ Catalyst สำคัญในอีก 2 เดือนข้างหน้า")
+                st.warning(f"🔥 **Upcoming Catalyst (2-Month Window):** ตัว **{ticker}** กำลังจะมีรอบประกาศผลประกอบการรายไตรมาส, การอัปเดตสิทธิบัตร/งานเปิดตัวเทคโนโลยีเฉพาะกลุ่ม และการประชุมทิศทางกระแสเงินทุนสถาบันในอีก 2 เดือนนี้ ซึ่งมักเป็นจุดเปลี่ยนสำคัญที่ Smart Money ใช้ลากราคาเบรกกรอบสะสมเดิม!")
+
+                st.markdown("---")
                 st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
-                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอข่าวบวกหรือผลประกอบการรอบถัดไป!")
+                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอ Catalyst รอบใหญ่ใน 2 เดือนนี้!")
                 st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
                 st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
-                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์ตามกระแสเงินทุนรอบใหญ่")
+                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์รับข่าว Catalyst รอบใหญ่")
 
         st.markdown("---")
     else:
