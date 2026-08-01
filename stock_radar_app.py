@@ -1,18 +1,12 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import requests
+import yfinance as yf
 
-st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
-
-# ฝัง API Key ตามที่มึงสั่ง ลุยยาวๆ!
-DEFAULT_TWELVE_API_KEY = "62b5e6e62bcc4a1d8532a614d5f2c3e3"
+st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro (yfinance Edition)", layout="wide")
 
 st.title("🎯 Deep Innovation & Swing Trading Radar Pro (By เพื่อนซี้สายหุ้นนวัตกรรม)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรระดับโลก & แกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-
-# ซ่อน API Key ไว้หลังบ้าน ไม่ต้องกรอกเองแล้วเพื่อน
-twelve_api_key = DEFAULT_TWELVE_API_KEY
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตรระดับโลก & แกะรอยเจ้ามือสะสม (Powered by Yahoo Finance)")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -78,56 +72,32 @@ def get_comprehensive_universe():
             'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
             'ZTS': 'เวชภัณฑ์และนวัตกรรมสุขภาพสัตว์เลี้ยงระดับโลก'
         },
-        "🛡️ 4. Consumer Staples & Defensive Moat (XLP)": {
-            'PG': 'เจ้าพ่อสินค้าอุปโภคบริโภคระดับโลก สิทธิบัตรนวัตกรรมสินค้าและ Pricing Power สูง',
-            'PEP': 'อาณาจักรขนมขบเคี้ยวและเครื่องดื่ม ซัพพลายเชนอัจฉริยะ',
-            'KO': 'แบรนด์เครื่องดื่มระดับโลกและระบบจัดจำหน่ายที่ไม่มีใครเทียบได้',
-            'WMT': 'ยักษ์ใหญ่ค้าปลีก โลจิสติกส์อัจฉริยะ และระบบจัดการสินค้าคงคลัง',
-            'COST': 'โมเดลธุรกิจสมาชิก คลังสินค้า และความภักดีของลูกค้าสูงมาก',
-            'PM': 'นวัตกรรมผลิตภัณฑ์ไร้ควัน (IQOS) และสิทธิบัตรยาสูบทางเลือก',
-            'MO': 'ผู้นำตลาดผลิตภัณฑ์นิโคตินทางเลือกและเงินสดท่วมพอร์ต',
-            'CL': 'ผู้นำผลิตภัณฑ์ทำความสะอาดและดูแลช่องปากระดับโลก',
-            'KMB': 'นวัตกรรมวัสดุเส้นใยและผลิตภัณฑ์สุขภัณฑ์ (Huggies/Kleenex)',
-            'GIS': 'นวัตกรรมอาหารสำเร็จรูปและแบรนด์อาหารแปรรูปชั้นนำ'
-        },
-        "🌐 5. Big Platforms, Fintech & High-Moat Financials (XLC / XLF)": {
+        "🌐 4. Big Platforms, Fintech & High-Moat Financials (XLC / XLF)": {
             'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
             'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem สิทธิบัตรอัลกอริทึม',
             'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
             'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
             'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต',
-            'BRK-B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
-            'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
-            'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค',
-            'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
-            'AXP': 'เครือข่ายบัตรเครดิตกลุ่มลูกค้ากำลังซื้อสูง (High Net Worth)',
-            'BLK': 'ผู้จัดการกองทุนที่ใหญ่ที่สุดในโลก (BlackRock / Aladdin Platform)',
-            'GS': 'วาณิชธนกิจชั้นนำระดับโลกและตลาดทุน',
-            'MS': 'บริการบริหารความมั่งคั่งและวาณิชธนกิจระดับโลก',
-            'BAC': 'ธนาคารพาณิชย์รายใหญ่และฐานลูกค้ารายย่อยทั่วสหรัฐฯ',
-            'SCHW': 'แพลตฟอร์มการลงทุนและซื้อขายหลักทรัพย์ชั้นนำ',
-            'PYPL': 'แพลตฟอร์มชำระเงินออนไลน์และฟินเทคระดับโลก',
-            'SQ': 'ระบบนิเวศการเงินและบล็อกเชนรายย่อย',
             'COIN': 'โครงสร้างพื้นฐานแลกเปลี่ยนสินทรัพย์ดิจิทัลและคริปโต',
-            'HOOD': 'แพลตฟอร์มซื้อขายสินทรัพย์ดิจิทัลและหุ้นรุ่นใหม่',
-            'SPGI': 'ข้อมูลเรตติ้งและดัชนีมาตรฐานการเงินโลก',
-            'MCO': 'การจัดอันดับความน่าเชื่อถือทางการเงินระดับโลก',
-            'ICE': 'ตลาดหลักทรัพย์และแพลตฟอร์มซื้อขายอนุพันธ์ระดับโลก'
+            'SQ': 'ระบบนิเวศการเงินและบล็อกเชนรายย่อย',
+            'HOOD': 'แพลตฟอร์มซื้อขายสินทรัพย์ดิจิทัลและหุ้นรุ่นใหม่'
         },
-        "🚀 6. Space Tech, Defense & Advanced Materials (XLB)": {
+        "🚀 5. Space Tech, Defense & Advanced Materials (XLB)": {
             'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ สิทธิบัตรเทคโนโลยีการบิน',
             'RTX': 'เทคโนโลยีการบินอวกาศและระบบเรดาร์ป้องกันประเทศ',
             'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง สิทธิบัตรลับทางทหาร',
-            'BA': 'อากาศยานพาณิชย์และเทคโนโลยีอวกาศระดับโลก',
-            'TDG': 'ชิ้นส่วนอากาศยานเฉพาะทางที่มีกำไรสุทธิสูงและสิทธิบัตรผูกขาด',
-            'HEI': 'อุปกรณ์การบินและชิ้นส่วนทดแทนที่มีสิทธิบัตรคุ้มครอง',
             'RKLB': 'ผู้นำการปล่อยจรวดอวกาศเชิงพาณิชย์และดาวเทียมวงโคจรต่ำ สิทธิบัตรจรวดรีไซเคิล',
-            'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง สิทธิบัตรเสาสัญญาณในอวกาศ',
-            'DD': 'นวัตกรรมวัสดุศาสตร์ขั้นสูงและอิเล็กทรอนิกส์เคมี สิทธิบัตรโพลีเมอร์',
-            'EMN': 'วัสดุพิเศษและโพลิเมอร์นวัตกรรมเพื่อความยั่งยืน'
+            'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง สิทธิบัตรเสาสัญญาณในอวกาศ'
         }
     }
     return universe
+
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
 
 def calculate_timeframe_metrics(df):
     timeframes = {
@@ -202,12 +172,6 @@ def calculate_timeframe_metrics(df):
         
     return results, rsi_2m_avg
 
-def calculate_rsi(series, period=14):
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    return 100 - (100 / (1 + (gain / loss)))
-
 universe = get_comprehensive_universe()
 
 st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้นเล่นรอบ")
@@ -223,8 +187,8 @@ if scan_mode == "📂 สแกนตาม Sector ใน Universe":
     rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
 else:
     st.sidebar.markdown("---")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RXRX, PLTR, COIN)", "RXRX")
-    st.sidebar.info("ระบบพร้อมดึงข้อมูลTwelve Data และแกะรอยหุ้นตัวนี้แบบเจาะลึกทันที!")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น RKLB, PLTR, ASTS)", "RKLB")
+    st.sidebar.info("ระบบพร้อมดึงข้อมูล Yahoo Finance แบบยาวๆ ไม่มีจำกัดโควต้า!")
 
 st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
 
@@ -246,35 +210,28 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
     total_tickers = len(target_tickers)
     
     for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังดึงข้อมูล Twelve Data ของหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        status_text.text(f"กำลังดึงข้อมูล Yahoo Finance ของหุ้น [{ticker}] ({i+1}/{total_tickers})...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
-            url = f"https://api.twelvedata.com/time_series?symbol={ticker}&interval=1day&outputsize=100&apikey={twelve_api_key}"
-            response = requests.get(url)
-            data = response.json()
+            # ดึงข้อมูลย้อนหลัง 6 เดือน เพื่อความชัวร์ในการคำนวณ indicator
+            df = yf.download(ticker, period="6m", interval="1d", progress=False)
             
-            if "code" in data and data["code"] != 200:
-                continue
-            if "values" not in data:
+            if df.empty or len(df) < 40:
                 continue
                 
-            df = pd.DataFrame(data["values"])
-            df['datetime'] = pd.to_datetime(df['datetime'])
-            df = df.sort_values('datetime').reset_index(drop=True)
-            df.set_index('datetime', inplace=True)
-            
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = pd.to_numeric(df[col])
-            df.columns = [c.capitalize() for c in df.columns]
-            
-            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            df['RSI'] = calculate_rsi(df['Close'], 14)
-            df = df.dropna(subset=['RSI'])
+            # จัดการ MultiIndex ของ yfinance หากมี
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+                
+            df = df[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
             
             if len(df) < 40:
                 continue
                 
+            df['RSI'] = calculate_rsi(df['Close'], 14)
+            df = df.dropna(subset=['RSI'])
+            
             latest_rsi = float(df['RSI'].iloc[-1])
             latest_close = float(df['Close'].iloc[-1])
             
@@ -308,14 +265,14 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
                     'TF_Data': tf_data, 'TP1': tp1_price,
                     'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2)
                 })
-        except:
+        except Exception as e:
             continue
 
     status_text.empty()
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายผ่าน Twelve Data ทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 วิเคราะห์สำเร็จ! พบข้อมูลหุ้นเป้าหมายผ่าน Yahoo Finance ทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
@@ -354,11 +311,11 @@ if st.button("🚀 เริ่มวิเคราะห์เจาะลึ�
 
                 st.markdown("---")
                 st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
-                st.info(f"เพื่อนวิเคราะห์ให้ว่าตัว **{ticker}** ตัวนี้ พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe ผ่าน Twelve Data ฟ้องชัดเจนว่า Smart Money กำลังทยอยตั้งฐานสะสมหุ้น (Accumulation Phase) เพื่อรอข่าวผลประกอบการและการอนุมัติสิทธิบัตรนวัตกรรมรอบถัดไป!")
+                st.info(f"เพื่อนวิเคราะห์ให้ว่าตัว **{ticker}** ตัวนี้ พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe ผ่าน Yahoo Finance ฟ้องชัดเจนว่า Smart Money กำลังทยอยตั้งฐานสะสมหุ้น (Accumulation Phase) เพื่อรอข่าวผลประกอบการและการอนุมัติสิทธิบัตรนวัตกรรมรอบถัดไป!")
                 st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
                 st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
                 st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถวแนวต้าน **${item['TP1']}** หรือรันเทรนด์ตามกระแสเงินทุนรอบใหญ่ของกองทุน")
 
         st.markdown("---")
     else:
-        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือโควต้า API อาจจะมีปัญหา ลองเช็กการเชื่อมต่อดูอีกทีนะเพื่อน!")
+        st.warning("ไม่พบหุ้นที่ตรงตามเงื่อนไขการสแกนในรอบนี้ ลองปรับค่า RSI หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")
