@@ -2,15 +2,13 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import requests
-import time
 
-st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
+st.set_page_config(page_title="Innovation Swing Technical Radar", layout="wide")
 
-# FMP API Key ของมึง
 API_KEY = "akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
 
-st.title("🎯 Deep Innovation & Swing Trading Radar Pro (FMP Edition)")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม พร้อมวิเคราะห์ Catalyst ล่วงหน้า 2 เดือน (ดึงข้อมูลผ่าน FMP)")
+st.title("🎯 Innovation Swing Technical Radar (RSI, %Vol & Price Action)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร เน้นจับจังหวะเทคนิค รอบราคา % Volume Change และ RSI แบบคมๆ")
 
 @st.cache_data(ttl=86400)
 def get_comprehensive_universe():
@@ -94,7 +92,7 @@ def get_comprehensive_universe():
             'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
             'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
             'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต',
-            'BRK.B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
+            'BRK-B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
             'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
             'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค',
             'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
@@ -128,249 +126,166 @@ def get_comprehensive_universe():
     return universe
 
 def calculate_rsi(prices, period=14):
+    if len(prices) < period + 1:
+        return 50.0
     deltas = np.diff(prices)
     seed = deltas[:period]
     up = seed[seed >= 0].sum() / period
     down = -seed[seed < 0].sum() / period
-    rs = up / (down + 1e-9)
+    if down == 0:
+        return 100.0
+    rs = up / down
     rsi = 100 - (100 / (1 + rs))
-    return rsi
+    return float(rsi)
 
-def fetch_fmp_historical(ticker):
-    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}?apikey={API_KEY}"
+def fetch_technical_data(ticker):
+    formatted_ticker = ticker.replace('.', '-')
+    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{formatted_ticker}?apikey={API_KEY}"
     try:
-        res = requests.get(url, timeout=5).json()
+        res = requests.get(url, timeout=10).json()
         hist = res.get('historical', [])
-        if hist and len(hist) >= 40:
-            # เรียงจากอดีตมาปัจจุบัน
-            hist = hist[::-1]
+        if hist and len(hist) >= 60:
             df = pd.DataFrame(hist)
             df['date'] = pd.to_datetime(df['date'])
-            df.set_index('date', inplace=True)
-            return df
+            df = df.sort_values('date').reset_index(drop=True)
+            
+            closes = df['close'].values
+            volumes = df['volume'].values
+            
+            latest_close = float(closes[-1])
+            prev_close = float(closes[-2])
+            
+            # คำนวณ % Vol Change (เทียบกับวันก่อนหน้า)
+            latest_vol = float(volumes[-1])
+            avg_vol_20 = float(np.mean(volumes[-21:-1])) if len(volumes) >= 21 else latest_vol
+            vol_change_pct = round(((latest_vol - avg_vol_20) / avg_vol_20) * 100, 2) if avg_vol_20 > 0 else 0.0
+            
+            # RSI 14
+            rsi = round(calculate_rsi(closes, 14), 2)
+            
+            # กรอบเวลาต่างๆ (1 สัปดาห์ / 5 วัน, 1 เดือน / 20 วัน, 3 เดือน / 60 วัน)
+            def get_range(days):
+                sub = df.tail(days)
+                return float(sub['high'].max()), float(sub['low'].min())
+
+            w_high, w_low = get_range(5)
+            m_high, m_low = get_range(20)
+            q_high, q_low = get_range(60)
+            
+            return {
+                'close': latest_close,
+                'change_pct': round(((latest_close - prev_close) / prev_close) * 100, 2),
+                'rsi': rsi,
+                'vol_change_pct': vol_change_pct,
+                'weekly': (w_high, w_low),
+                'monthly': (m_high, m_low),
+                'quarterly': (q_high, q_low)
+            }
     except:
         pass
     return None
 
-def calculate_timeframe_metrics(df):
-    timeframes = {
-        '1 วันก่อน': 1, '3 วันก่อน': 3, '1 อาทิตย์ก่อน': 5, 
-        '2 อาทิตย์ก่อน': 10, '1 เดือนก่อน': 20, '2 เดือนก่อน': 40
-    }
-    results = {}
-    
-    try:
-        current_close = float(df['close'].iloc[-1])
-        baseline_full_avg = float(df['volume'].mean())
-    except:
-        return {}, 0.0
-
-    for label, days in timeframes.items():
-        try:
-            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
-            high_max = float(sub_df['high'].max())
-            low_min = float(sub_df['low'].min())
-            start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
-            
-            high_pct = round(((high_max - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
-            low_pct = round(((low_min - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
-            total_range_pct = round(((high_max - low_min) / current_close) * 100, 1) if current_close > 0 else 0.0
-            
-            poc_price = None
-            try:
-                hist_sub = sub_df.copy()
-                hist_sub['Bin'] = pd.cut(hist_sub['close'], bins=10)
-                poc_row = hist_sub.groupby('Bin', observed=False)['volume'].sum().idxmax()
-                if pd.notna(poc_row):
-                    poc_price = round(float(poc_row.mid), 2)
-            except:
-                poc_price = None
-            
-            if poc_price is None:
-                poc_price = round(current_close, 2)
-
-            vol_spike_today_pct = 0.0
-            if len(df) >= (days * 2):
-                recent_vol_avg = df.tail(days)['volume'].mean()
-                previous_vol_avg = df.iloc[-(days * 2):-days]['volume'].mean()
-                if previous_vol_avg > 0:
-                    vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1)
-            elif len(sub_df) >= 2 and days == 1:
-                latest_vol = sub_df['volume'].iloc[-1]
-                prev_vol = sub_df['volume'].iloc[-2]
-                if prev_vol > 0:
-                    vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1)
-
-            vol_period_change_pct = 0.0
-            sub_period_avg = sub_df['volume'].mean()
-            if baseline_full_avg > 0:
-                vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
-            
-            results[label] = {
-                'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
-                'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
-                'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct
-            }
-        except:
-            results[label] = {
-                'start_date': None, 'high': 0.0, 'low': 0.0,
-                'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
-                'poc_price': None, 'vol_spike_today': 0.0, 'vol_period_change': 0.0
-            }
-        
-    try:
-        closes = df['close'].values
-        rsi_series = [calculate_rsi(closes[max(0, i-14):i+1]) for i in range(14, len(closes))]
-        rsi_2m_avg = round(float(np.mean(rsi_series[-40:])) if len(rsi_series) >= 40 else float(np.mean(rsi_series)), 2)
-    except:
-        rsi_2m_avg = 50.0
-        
-    return results, rsi_2m_avg
-
 universe = get_comprehensive_universe()
 
-st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้นเล่นรอบ")
+st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์ทางเทคนิค")
 scan_mode = st.sidebar.radio("📌 เลือกโหมดการค้นหา", ["📂 สแกนตาม Sector ใน Universe", "🔎 ค้นหา Ticker อิสระรายตัว (Custom Search)"])
 
 if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-    selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
-    strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดการค้นหาเจ้ามือสะสม", [
-        "1. โหมดสะสมพลังออกข้าง (Range-Bound Accumulation & Base Building)", 
-        "2. โหมดเจ้ามือเริ่มเคาะขยับเบรกเอาท์ (Momentum Breakout & Volume Surge)"
-    ])
-    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 20, 50, 35)
-    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
+    selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรมนวัตกรรม", list(universe.keys()))
+    max_rsi = st.sidebar.slider("📉 RSI สูงสุดที่ไม่เกิน (กรองโซนซื้อ)", 30, 90, 75)
+    min_vol_chg = st.sidebar.slider("📊 % Volume Change ขั้นต่ำ (%)", -50, 200, 0)
 else:
     st.sidebar.markdown("---")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น NVDA, PLTR, LLY)", "NVDA")
-    st.sidebar.info("ระบบจะดึงข้อมูลกราฟและแกะรอยหุ้นตัวนี้แบบเจาะลึกทันทีโดยไม่สนเงื่อนไขกรอง Sector!")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการสแกนเทคนิค", "NVDA, AAPL, TSLA")
+    st.sidebar.info("คั่นด้วยเครื่องหมายจุลภาค (,) หากใส่หลายตัว")
 
-st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
+st.markdown(f"## 🚀 เรดาร์วิเคราะห์เทคนิคหุ้นนวัตกรรม & สิทธิบัตรระดับโลก")
 
-if st.button("🚀 เริ่มวิเคราะห์เจาะลึกหุ้นเป้าหมาย"):
+if st.button("🔥 เริ่มสแกนเทคนิคและวิเคราะห์รอบราคา"):
     target_tickers = {}
-    
     if scan_mode == "📂 สแกนตาม Sector ใน Universe":
         target_tickers = universe[selected_sector]
     else:
-        cleaned_ticker = custom_ticker_input.strip().upper()
-        if cleaned_ticker:
-            target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
-        else:
-            st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
+        tickers_list = [t.strip().upper() for t in custom_ticker_input.split(',') if t.strip()]
+        # ดึงคำอธิบาย Moat จาก Universe ถ้ามี หรือใช้ค่าเริ่มต้น
+        flat_universe = {t: desc for sec in universe.values() for t, desc in sec.items()}
+        target_tickers = {t: flat_universe.get(t, 'หุ้นนวัตกรรมและเทคโนโลยีขั้นสูง') for t in tickers_list}
 
     matched_data = []
     progress_bar = st.progress(0)
     status_text = st.empty()
-    total_tickers = len(target_tickers)
-    
-    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
-        status_text.text(f"กำลังดึงข้อมูล FMP และแกะรอยหุ้น [{ticker}] ({i+1}/{total_tickers})...")
-        progress_bar.progress((i + 1) / total_tickers)
-        
-        df = fetch_fmp_historical(ticker)
-        if df is None or len(df) < 40:
-            continue
-            
-        try:
-            closes = df['close'].values
-            latest_close = float(closes[-1])
-            latest_rsi = float(calculate_rsi(closes))
-            
-            recent = df.tail(20).copy()
-            high_max = float(recent['high'].max())
-            low_min = float(recent['low'].min())
-            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
-            
-            recent['Vol_MA'] = recent['volume'].rolling(window=10).mean()
-            last_vol = float(recent['volume'].iloc[-1])
-            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
-            
-            is_matched = True
-            if scan_mode == "📂 สแกนตาม Sector ใน Universe":
-                if "สะสม" in strategy_mode:
-                    if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = False
-                else:
-                    vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
-                    if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
-                        is_matched = False
+    total = len(target_tickers)
 
-            if is_matched:
-                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                tp1_price = round(latest_close * 1.05, 2)
-                
-                tech_status = "กำลังสร้างฐานสะสมพลัง (Base Building / Accumulation)" if range_pct <= 0.15 else "กำลังเบรกเอาท์ทำรอบ (Momentum Breakout)"
-                moat_status = "แข็งแกร่งระดับผูกขาด (High Moat / IP Protected)"
-                
-                matched_data.append({
-                    'Ticker': ticker, 'Moat': moat_story,
-                    'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
-                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'TP1': tp1_price,
-                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2),
-                    'Tech_Status': tech_status, 'Moat_Status': moat_status
-                })
-        except:
-            continue
+    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
+        status_text.text(f"กำลังประมวลผลข้อมูลเทคนิคของ [{ticker}] ({i+1}/{total})...")
+        progress_bar.progress((i + 1) / total)
         
-        time.sleep(0.05)
+        tech = fetch_technical_data(ticker)
+        if tech is None:
+            continue
+            
+        # กรองตามเงื่อนไขทางเทคนิคถ้าเลือกแบบ Sector
+        is_passed = True
+        if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+            if tech['rsi'] > max_rsi or tech['vol_change_pct'] < min_vol_chg:
+                is_passed = False
+        
+        if is_passed or scan_mode == "🔎 ค้นหา Ticker อิสระรายตัว (Custom Search)":
+            # วิเคราะห์สถานะและกลยุทธ์เบื้องต้นตามหลัก Price Action & RSI
+            rsi_val = tech['rsi']
+            vol_chg = tech['vol_change_pct']
+            
+            if rsi_val > 70:
+                status_label = "🔥 Overbought / กำลังวิ่งแรง (ระวังพักตัวหรือรอไล่ตามข่าวสิทธิบัตร)"
+                strategy = "ทยอยแบ่งขายทำกำไร หรือรอจังหวะย่อตัวแตะแนวรับรายสัปดาห์ ไม่ไล่ราคาเพียวๆ"
+            elif rsi_val < 40:
+                status_label = "🟢 Oversold / โซนสะสมของ Smart Money"
+                strategy = "ทยอยเข้าสะสมไม้แรกบริเวณกรอบแนวรับรายเดือน (Monthly Low) รอข่าว Catalyst ออก"
+            else:
+                status_label = "⚖️ Neutral / กำลังสร้างฐานราคา (Consolidation)"
+                strategy = "จับตาดู Volume ผิดปกติ หาก %Vol เป็นบวกและทะลุกรอบ Monthly High ให้ตามน้ำเล่นรอบสั้น"
+
+            matched_data.append({
+                'Ticker': ticker, 'Moat': moat_story, 'Tech': tech,
+                'Status_Label': status_label, 'Strategy': strategy
+            })
 
     status_text.empty()
     progress_bar.empty()
 
     if matched_data:
-        st.success(f"🎯 วิเคราะห์ผ่าน FMP สำเร็จ! พบข้อมูลหุ้นเป้าหมายทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 สแกนสำเร็จ! พบหุ้นที่ตรงเงื่อนไขเทคนิค **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
             ticker = item['Ticker']
-            current_close = item['Close']
+            t = item['Tech']
             
-            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
-            
-            with st.expander(expander_title, expanded=True):
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
-                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
-                col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
-                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+            with st.expander(f"🌟 [{ticker}] | ราคาปิด: ${t['close']} ({t['change_pct']:+}% ) | RSI: {t['rsi']} | %Vol Chg: {t['vol_change_pct']:+}%", expanded=True):
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("💰 ราคาปัจจุบัน", f"${t['close']}", f"{t['change_pct']:+}%")
+                c2.metric("📉 RSI (14)", f"{t['rsi']}")
+                c3.metric("📊 % Volume Change", f"{t['vol_change_pct']:+}%")
+                c4.metric("🛡️ สถานะเทคนิค", "พร้อมเทรดรอบ")
                 
                 st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
-                tf_rows = []
-                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
-                    if tf_name in item['TF_Data']:
-                        info = item['TF_Data'][tf_name]
-                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                        tf_rows.append({
-                            'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
-                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
-                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
-                            'กรอบ (Range)': f"{info['range_pct']}%",
-                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
-                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
-                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
-                        })
-                st.table(pd.DataFrame(tf_rows))
+                st.markdown("### 📦 กรอบราคา High / Low แต่ละ Timeframe")
+                col_w, col_m, col_q = st.columns(3)
+                col_w.metric("📅 1 สัปดาห์ (High / Low)", f"${t['weekly'][0]} / ${t['weekly'][1]}")
+                col_m.metric("🗓️ 1 เดือน (High / Low)", f"${t['monthly'][0]} / ${t['monthly'][1]}")
+                col_q.metric("🗓️ 3 เดือน (High / Low)", f"${t['quarterly'][0]} / ${t['quarterly'][1]}")
+                
+                st.markdown("---")
+                st.markdown("### 🧬 สิทธิบัตร & จุดแข็งคูเมือง (IP Moat)")
+                st.info(f"🛡️ {item['Moat']}")
 
                 st.markdown("---")
-                st.markdown("### 🔬 สถานะการวิเคราะห์หุ้นเชิงลึก (Deep Analysis Status)")
-                sc1, sc2 = st.columns(2)
-                sc1.markdown(f"📊 **สถานะทางเทคนิคและรอบราคา:** {item['Tech_Status']}")
-                sc2.markdown(f"🛡️ **สถานะความแข็งแกร่งนวัตกรรม:** {item['Moat_Status']}")
-
-                st.markdown("---")
-                st.markdown("### ⚡ วิเคราะห์ Catalyst สำคัญในอีก 2 เดือนข้างหน้า")
-                st.warning(f"🔥 **Upcoming Catalyst (2-Month Window):** ตัว **{ticker}** กำลังจะมีรอบประกาศผลประกอบการรายไตรมาส, การอัปเดตสิทธิบัตร/งานเปิดตัวเทคโนโลยีเฉพาะกลุ่ม และการประชุมทิศทางกระแสเงินทุนสถาบันในอีก 2 เดือนนี้ ซึ่งมักเป็นจุดเปลี่ยนสำคัญที่ Smart Money ใช้ลากราคาเบรกกรอบสะสมเดิม!")
-
-                st.markdown("---")
-                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
-                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe ผ่าน FMP กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอ Catalyst รอบใหญ่ใน 2 เดือนนี้!")
-                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
-                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
-                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์รับข่าว Catalyst รอบใหญ่")
+                st.markdown("### 🎯 วิเคราะห์สถานะ & แผนกลยุทธ์เล่นรอบ")
+                st.warning(f"📌 **สถานะปัจจุบัน:** {item['Status_Label']}")
+                st.success(f"💡 **กลยุทธ์เข้า-ออก (Entry / Exit Plan):** {item['Strategy']}")
+                st.markdown(f"📍 **โซนแนวรับสะสมอิงกรอบรายเดือน:** 🟢 **${t['monthly'][1]} - ${round(t['monthly'][1]*1.02, 2)}**")
+                st.markdown(f"🚀 **เป้าแนวต้านเล่นรอบ:** 🎯 **${t['monthly'][0]}** (ทดสอบกรอบบน 1 เดือน)")
 
         st.markdown("---")
     else:
-        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือข้อมูลย้อนหลังไม่เพียงพอ ลองเช็กชื่อตัวย่อใหม่อีกทีนะเพื่อน!")
+        st.warning("ไม่พบหุ้นที่ผ่านเกณฑ์เทคนิคที่ตั้งไว้ ลองปรับค่า RSI หรือ % Volume Change ใน Sidebar ใหม่นะเพื่อน!")
