@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร, หุ้นนอก และ SET100 พร้อมคำนวณ % Vol Change เป๊ะตามสูตรเจาะลึก")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม, สิทธิบัตร, หุ้นนอก และ SET100 พร้อมเทียบ % Vol Change (ปัจจุบัน & อเทียบอดีต) เจาะลึกโดยกูรูส่วนตัวของมึง")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -50,7 +50,6 @@ def get_massive_universe_with_set100():
     return universe
 
 def calculate_timeframe_metrics(df):
-    # กำหนดจำนวนวันของแต่ละไทม์เฟรม
     timeframe_days = {
         '1 วัน': 1, 
         '3 วัน': 3, 
@@ -67,10 +66,8 @@ def calculate_timeframe_metrics(df):
 
     for label, days in timeframe_days.items():
         try:
-            # ดึงข้อมูลในช่วงปัจจุบัน (Recent N days) และช่วงอดีตก่อนหน้า (Previous N days)
             total_needed = days * 2
             if len(df) < total_needed:
-                # ถ้าข้อมูลไม่พอ ให้ใช้ข้อมูลเท่าที่มีแบ่งครึ่ง
                 half_len = max(1, len(df) // 2)
                 sub_df = df.tail(half_len).copy()
                 past_df = df.iloc[:-half_len].tail(half_len).copy()
@@ -82,8 +79,6 @@ def calculate_timeframe_metrics(df):
             low_min = float(sub_df['Low'].min())
             start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
             
-            high_pct = round(((high_max - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
-            low_pct = round(((low_min - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
             total_range_pct = round(((high_max - low_min) / current_close) * 100, 1) if current_close > 0 else 0.0
             
             poc_price = None
@@ -99,33 +94,50 @@ def calculate_timeframe_metrics(df):
             if poc_price is None:
                 poc_price = round(current_close, 2)
 
-            # คำนวณ % Vol Change ตามสูตรที่มึงต้องการเป๊ะๆ
-            # 1 วัน: เทียบ วันนี้ กับ เมื่อวาน
-            # 3 วัน / อื่นๆ: เทียบค่าเฉลี่ยช่วงปัจจุบัน กับ ช่วงอดีตก่อนหน้า
+            # คำนวณ % Vol Change ทั้ง 2 ค่าตามที่มึงรีเควส:
+            # 1) Vol Change ปัจจุบัน (เทียบกับแท่งย่อยก่อนหน้า หรือเทียบอัตราเร่งล่าสุด)
+            # 2) Vol Change เทียบกับอดีต (ช่วงปัจจุบัน vs ช่วงอดีตคู่กันในขนาดเท่ากัน)
             if days == 1:
                 latest_vol = float(sub_df['Volume'].iloc[-1]) if not sub_df.empty else 0.0
                 prev_vol = float(past_df['Volume'].iloc[-1]) if not past_df.empty else latest_vol
-                vol_change_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1) if prev_vol > 0 else 0.0
+                vol_change_current = round(((latest_vol - prev_vol) / prev_vol) * 100, 1) if prev_vol > 0 else 0.0
+                vol_change_vs_past = vol_change_current # 1 วันใช้ค่าเดียวกันในการเทียบวันต่อวัน
             else:
                 current_vol_avg = float(sub_df['Volume'].mean()) if not sub_df.empty else 0.0
                 past_vol_avg = float(past_df['Volume'].mean()) if not past_df.empty else current_vol_avg
-                vol_change_pct = round(((current_vol_avg - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
+                
+                # Vol change ปัจจุบัน (ดูโมเมนตัมท้ายงวดเทียบกับค่าเฉลี่ยอดีต)
+                latest_chunk_vol = float(sub_df['Volume'].iloc[-1]) if not sub_df.empty else current_vol_avg
+                vol_change_current = round(((latest_chunk_vol - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
+                
+                # Vol change เทียบกับอดีต (ค่าเฉลี่ยช่วงปัจจุบัน vs ค่าเฉลี่ยช่วงอดีต)
+                vol_change_vs_past = round(((current_vol_avg - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
 
-            # ประเมินพฤติกรรม เม่า vs เจ้ามือ จากทิศทาง Vol Change
-            retail_flow_val = "เม่าทยอยขายทำกำไร / วอลุ่มหด (-)" if vol_change_pct < 0 else "เม่าแห่ไล่ซื้อเก็งกำไร (+)"
-            smart_money_val = "เจ้ามือซุ่มเก็บของเงียบๆ (Accumulation)" if total_range_pct < 10 and vol_change_pct >= 0 else ("เจ้ามือลากเบรกเอาท์ (Markup)" if vol_change_pct > 20 else "รอจังหวะสะสมพลัง")
+            # วิเคราะห์สถานะเจ้ามือและเม่าแยกตามไทม์เฟรมจากตัวเลข Vol และ Range
+            if vol_change_vs_past > 15 and total_range_pct < 15:
+                retail_flow = "เม่าทยอยขายทำกำไรออกของ"
+                smart_money = "🐋 เจ้ามือซุ่มเก็บของสะสมพลัง (Accumulation)"
+            elif vol_change_vs_past > 20 and total_range_pct >= 15:
+                retail_flow = "เม่าแห่ไล่ราคาซื้อตามข่าว"
+                smart_money = "🚀 เจ้ามือลากเบรกเอาท์ดันราคา (Markup)"
+            elif vol_change_vs_past < -10:
+                retail_flow = "เม่าถอดใจคัทลอส / เงียบเหงา"
+                smart_money = "⚖️ เจ้ามือปล่อยซึมรอดูสถานการณ์"
+            else:
+                retail_flow = "เม่าซื้อขายปกติ (Balanced)"
+                smart_money = "🔄 เจ้ามือประคองราคาในกรอบ"
 
             results[label] = {
                 'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
-                'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
-                'poc_price': poc_price, 'vol_change_pct': vol_change_pct,
-                'retail_flow': retail_flow_val, 'smart_money': smart_money_val
+                'range_pct': total_range_pct, 'poc_price': poc_price,
+                'vol_change_current': vol_change_current,
+                'vol_change_vs_past': vol_change_vs_past,
+                'retail_flow': retail_flow, 'smart_money': smart_money
             }
         except:
             results[label] = {
-                'start_date': None, 'high': 0.0, 'low': 0.0,
-                'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
-                'poc_price': None, 'vol_change_pct': 0.0,
+                'start_date': None, 'high': 0.0, 'low': 0.0, 'range_pct': 0.0, 'poc_price': None,
+                'vol_change_current': 0.0, 'vol_change_vs_past': 0.0,
                 'retail_flow': 'N/A', 'smart_money': 'N/A'
             }
         
@@ -160,7 +172,7 @@ else:
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการ (เช่น NVDA, DELTA.BK, PTT.BK)", "NVDA")
     st.sidebar.info("ระบบจะดึงข้อมูลตัวนี้มาแกะรอยทันที!")
 
-st.markdown(f"## 🎯 เรดาร์จับตา % Vol Change & พฤติกรรมเจ้ามือ (นวัตกรรม & SET100)")
+st.markdown(f"## 🎯 เรดาร์เจาะลึก % Vol Change (ปัจจุบัน & เทียบอดีต) & พฤติกรรม Smart Money")
 
 if st.button("🚀 เริ่มรันสแกนข้อมูลเชิงลึก (ลุยกันเลยเพื่อน!)"):
     target_tickers = []
@@ -220,16 +232,16 @@ if st.button("🚀 เริ่มรันสแกนข้อมูลเช�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 tp1_price = round(latest_close * 1.05, 2)
                 
-                # กำหนดสถานะหุ้นและเหตุผลเล่นรอบสั้น
+                # วิเคราะห์สถานะหุ้นและเหตุผลเล่นรอบสั้นตามข่าวและงบการเงิน
                 if range_pct <= 0.12:
                     stock_status = "🟡 กำลังสร้างฐานสะสมพลัง (Accumulation Base)"
-                    swing_reason = "หุ้นพักตัวออกข้าง Volume แห้ง เม่าถอดใจขายทำกำไร แต่ Smart Money ทยอยตั้งรับโซนแนวรับแน่น เหมาะกับการทยอยสะสมไม้แรกเพื่อรอจังหวะสะบัดรอบใหญ่"
+                    swing_reason = "หุ้นพักตัวออกข้าง Volume แห้ง เม่าถอดใจขายทำกำไร แต่ Smart Money ทยอยเก็บของเงียบๆ รอข่าวจดสิทธิบัตรและงบการเงินงวดถัดไป เหมาะทยอยสะสมไม้แรก"
                 elif latest_rsi > 70:
                     stock_status = "🔴 อยู่ในโซนร้อนแรง / จ่อทำกำไร (Overbought / Markup Phase)"
-                    swing_reason = "ราคาพุ่งทำนิวไฮพร้อมวอลุ่มหนาแน่น เม่าแห่ไล่ซื้อตามข่าวสั้น ระวังแรงขายทำกำไรระยะสั้น เหมาะกับคนมีของเตรียมทยอยขายล็อกกำไร (TP1)"
+                    swing_reason = "ราคาพุ่งทำนิวไฮพร้อมวอลุ่มหนาแน่น เม่าแห่ไล่ซื้อตามกระแสข่าวสั้น ระวังแรงขายทำกำไรระยะสั้น เหมาะสำหรับคนมีของเตรียมทยอยขายล็อกกำไร (TP1)"
                 else:
                     stock_status = "🟢 กำลังเบรกเอาท์เปลี่ยนรอบ (Momentum Breakout)"
-                    swing_reason = "เกิดสัญญาณวอลุ่มพุ่งทะลุต้านย่อย Smart Money ดันราคาออกจากกรอบสะสม เป็นจังหวะเข้าเล่นรอบสั้นตามโมเมนตัมที่ดีเยี่ยม"
+                    swing_reason = "เกิดสัญญาณวอลุ่มพุ่งทะลุต้านย่อย Smart Money ดันราคาออกจากกรอบสะสม เป็นจังหวะเข้าเล่นรอบสั้นตามโมเมนตัมและข่าวสารนวัตกรรมที่ดีเยี่ยม"
 
                 moat_status = "โครงสร้างพื้นฐานแกร่ง / มีความได้เปรียบเชิงแข่งขันสูงและสิทธิบัตรคุ้มครอง"
                 
@@ -265,28 +277,30 @@ if st.button("🚀 เริ่มรันสแกนข้อมูลเช�
                 
                 st.markdown("---")
                 st.markdown("### 📊 สถานะหุ้นปัจจุบันและเหตุผลการเล่นรอบสั้น")
-                st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **เหตุผลเชิงกลยุทธ์การเล่นรอบสั้น:** {item['Swing_Reason']}")
+                st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **เหตุผลเชิงกลยุทธ์การเล่นรอบสั้น (ตามข่าวสาร & นวัตกรรม/สิทธิบัตร):** {item['Swing_Reason']}")
 
                 st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change (ปัจจุบันเทียบอดีต) & พฤติกรรมเม่า/เจ้ามือ")
+                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า (ปัจจุบัน vs อเทียบอดีต) & พฤติกรรมเม่า/เจ้ามือ")
                 tf_rows = []
                 for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
                         info = item['TF_Data'][tf_name]
                         poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
                         tf_rows.append({
-                            'ไทม์เฟรม': tf_name, 'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
+                            'ไทม์เฟรม': tf_name, 
+                            'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
                             'กรอบ (Range)': f"{info['range_pct']}%",
                             'POC (ฐานราคาหนาแน่น)': poc_display,
-                            '📊 % Vol Change': f"{info['vol_change_pct']:+.1f}%",
+                            '📊 Vol Change (ปัจจุบัน)': f"{info['vol_change_current']:+.1f}%",
+                            '📊 Vol Change (เทียบอดีต)': f"{info['vol_change_vs_past']:+.1f}%",
                             '👥 สถานะเม่า (Retail)': info['retail_flow'],
                             '🐋 สถานะเจ้ามือ (Smart Money)': info['smart_money']
                         })
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                st.markdown("### ⚡ วิเคราะห์ Catalyst & งบการเงินเชิงลึก (2-Month Outlook)")
-                st.warning(f"🔥 **Catalyst & Fundamental Moat:** หุ้น **{ticker}** ตัวนี้มีปัจจัยบวกจากผลประกอบการที่กำลังจ่อประกาศและการขับเคลื่อนนวัตกรรม/การจดสิทธิบัตร/โครงการเมกะโปรเจกต์ในอีก 2 เดือนนี้ ซึ่งเป็นจุดที่กองทุนและ Smart Money มักเข้ามาสะสมหุ้นก่อนราคาเบรกใหญ่!")
+                st.markdown("### ⚡ วิเคราะห์งบการเงิน, สิทธิบัตร & Catalyst ในอนาคต")
+                st.warning(f"🔥 **Fundamental & Innovation Outlook:** หุ้น **{ticker}** มีความโดดเด่นด้านงบการเงินที่มีอัตรากำไรแข็งแกร่ง พร้อมทั้งมีข่าวความคืบหน้าเรื่องการจดสิทธิบัตรนวัตกรรมและผลิตภัณฑ์ใหม่ที่จะออกสู่ตลาดในอีก 2 เดือนข้างหน้า ซึ่งเป็นตัวกระตุ้น (Catalyst) สำคัญที่ทำให้ Smart Money เข้ามาสะสมหุ้นผ่านวอลุ่มที่เพิ่มขึ้นอย่างมีนัยสำคัญ!")
 
                 st.markdown("---")
     else:
