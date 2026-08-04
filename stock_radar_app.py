@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตรระดับโลก (พร้อมสมองกลวิเคราะห์งบการเงิน & เกม Smart Money)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร (พร้อมคำนวณฐาน POC และจุด Stop Loss อัตโนมัติ)")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -138,7 +138,6 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + (gain / loss)))
 
 def get_smart_fundamental_and_patent_insight(ticker):
-    # ฟังก์ชันวิเคราะห์เชิงลึกจำลองตามสไตล์เพื่อนกูรูหุ้นนวัตกรรม & สิทธิบัตร
     ticker_upper = ticker.upper()
     if 'NVDA' in ticker_upper:
         return ("AI Computing & GPU Architecture Patents", 
@@ -182,7 +181,7 @@ else:
     st.sidebar.markdown("---")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการ (เช่น NVDA, DELTA.BK, PTT.BK)", "NVDA")
 
-st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, สิทธิบัตรนวัตกรรม & พฤติกรรม Smart Money")
+st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, สิทธิบัตรนวัตกรรม & จุดคำนวณ Stop Loss")
 
 if st.button("🚀 เริ่มรันระบบสแกน (ลุยกันเพื่อน!)"):
     target_tickers = []
@@ -230,6 +229,11 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
             poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
             poc_price = float(poc_row.mid) if pd.notna(poc_row) else latest_close
             
+            # คำนวณจุด Stop Loss และ Take Profit อัตโนมัติจากฐานราคา POC และ Low 30 วัน
+            stop_loss_price = round(min(poc_price * 0.97, low_30 * 0.99), 2)
+            tp1_price = round(latest_close * 1.05, 2)
+            tp2_price = round(latest_close * 1.10, 2)
+            
             vol_3d_current = float(df.tail(3)['Volume'].mean())
             vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
             vol_change_3d_pct = ((vol_3d_current - vol_3d_past) / vol_3d_past) * 100 if vol_3d_past > 0 else 0.0
@@ -253,7 +257,6 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                tp1_price = round(latest_close * 1.05, 2)
                 patent_theme, fundamental_review = get_smart_fundamental_and_patent_insight(ticker)
                 
                 if scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
@@ -269,8 +272,9 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 matched_data.append({
                     'Ticker': ticker, 'Close': round(latest_close, 2), 'Vol_Change_3D': round(vol_change_3d_pct, 1),
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
-                    'TF_Data': tf_data, 'TP1': tp1_price,
-                    'POC_Price': round(poc_price, 2), 'Resistance_Price': round(high_30, 2),
+                    'TF_Data': tf_data, 'TP1': tp1_price, 'TP2': tp2_price,
+                    'POC_Price': round(poc_price, 2), 'Stop_Loss': stop_loss_price,
+                    'Resistance_Price': round(high_30, 2),
                     'Stock_Status': stock_status, 'Swing_Reason': swing_reason,
                     'Patent_Theme': patent_theme, 'Fundamental_Review': fundamental_review
                 })
@@ -294,8 +298,8 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
             with st.expander(expander_title, expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
-                col2.metric("📊 Vol Change (3 วัน)", f"{item['Vol_Change_3D']:+.1f}%")
-                col3.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
+                col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
+                col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
                 col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
                 
                 st.markdown("---")
@@ -324,9 +328,9 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้น **{ticker}** ตัวนี้ผ่านมาตรฐานการคัดกรองแบบยืดหยุ่น มีปัจจัยพื้นฐาน งบการเงินแกร่ง และสตอรี่สิทธิบัตรนวัตกรรมหนุนหลัง ลุยไม้แรกตามแผนได้เลยเพื่อน!")
+                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้น **{ticker}** มีฐานราคาอยู่ที่ **${item['POC_Price']}** และตั้งจุดตัดขาดทุน (Stop Loss) ไว้ที่ **${item['Stop_Loss']}** หากราคาหลุดเส้นนี้ให้คัทลอสทันทีตามวินัย แล้วรอจังหวะข่าวดีรอบใหม่ค่อยกลับมาเก็บใหม่เพื่อน!")
 
                 st.markdown("---")
     else:
         st.warning("⚠️ ยังไม่พบข้อมูลในหมวดนี้ ลองสลับไปหมวด 'SET100 Volume Surge' หรือ 'ค้นหารายตัว (Custom Search)' ดูนะเพื่อน ระบบพร้อมลุยเสมอ!")
-        
+                    
