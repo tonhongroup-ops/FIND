@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร, หุ้นนอก และ SET100 พร้อมแกะรอยเม่า-เจ้ามือและเหตุผลเล่นรอบสั้น")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร, หุ้นนอก และ SET100 พร้อมคำนวณ % Vol Change เป๊ะตามสูตรเจาะลึก")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -50,20 +50,34 @@ def get_massive_universe_with_set100():
     return universe
 
 def calculate_timeframe_metrics(df):
-    timeframes = {
-        '1 วันก่อน': 1, '3 วันก่อน': 3, '1 อาทิตย์ก่อน': 5, 
-        '2 อาทิตย์ก่อน': 10, '1 เดือนก่อน': 20, '2 เดือนก่อน': 40
+    # กำหนดจำนวนวันของแต่ละไทม์เฟรม
+    timeframe_days = {
+        '1 วัน': 1, 
+        '3 วัน': 3, 
+        '1 อาทิตย์': 5, 
+        '2 อาทิตย์': 10, 
+        '1 เดือน': 20, 
+        '2 เดือน': 40
     }
     results = {}
     try:
         current_close = float(df['Close'].iloc[-1])
-        baseline_full_avg = float(df['Volume'].mean())
     except:
         return {}, 0.0
 
-    for label, days in timeframes.items():
+    for label, days in timeframe_days.items():
         try:
-            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
+            # ดึงข้อมูลในช่วงปัจจุบัน (Recent N days) และช่วงอดีตก่อนหน้า (Previous N days)
+            total_needed = days * 2
+            if len(df) < total_needed:
+                # ถ้าข้อมูลไม่พอ ให้ใช้ข้อมูลเท่าที่มีแบ่งครึ่ง
+                half_len = max(1, len(df) // 2)
+                sub_df = df.tail(half_len).copy()
+                past_df = df.iloc[:-half_len].tail(half_len).copy()
+            else:
+                sub_df = df.tail(days).copy()
+                past_df = df.iloc[-(days * 2):-days].copy()
+
             high_max = float(sub_df['High'].max())
             low_min = float(sub_df['Low'].min())
             start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
@@ -85,38 +99,33 @@ def calculate_timeframe_metrics(df):
             if poc_price is None:
                 poc_price = round(current_close, 2)
 
-            vol_spike_today_pct = 0.0
-            if len(df) >= (days * 2):
-                recent_vol_avg = df.tail(days)['Volume'].mean()
-                previous_vol_avg = df.iloc[-(days * 2):-days]['Volume'].mean()
-                if previous_vol_avg > 0:
-                    vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1)
-            elif len(sub_df) >= 2 and days == 1:
-                latest_vol = sub_df['Volume'].iloc[-1]
-                prev_vol = sub_df['Volume'].iloc[-2]
-                if prev_vol > 0:
-                    vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1)
+            # คำนวณ % Vol Change ตามสูตรที่มึงต้องการเป๊ะๆ
+            # 1 วัน: เทียบ วันนี้ กับ เมื่อวาน
+            # 3 วัน / อื่นๆ: เทียบค่าเฉลี่ยช่วงปัจจุบัน กับ ช่วงอดีตก่อนหน้า
+            if days == 1:
+                latest_vol = float(sub_df['Volume'].iloc[-1]) if not sub_df.empty else 0.0
+                prev_vol = float(past_df['Volume'].iloc[-1]) if not past_df.empty else latest_vol
+                vol_change_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1) if prev_vol > 0 else 0.0
+            else:
+                current_vol_avg = float(sub_df['Volume'].mean()) if not sub_df.empty else 0.0
+                past_vol_avg = float(past_df['Volume'].mean()) if not past_df.empty else current_vol_avg
+                vol_change_pct = round(((current_vol_avg - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
 
-            vol_period_change_pct = 0.0
-            sub_period_avg = sub_df['Volume'].mean()
-            if baseline_full_avg > 0:
-                vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
-            
-            # จำลองประเมินการเข้าออกของเม่าและเจ้ามือตามพฤติกรรม Volume & Price Action
-            retail_flow_val = "เม่าทยอยขายทำกำไร (-)" if vol_spike_today_pct < 0 else "เม่าแห่ไล่ราคาซื้อเข้า (+)"
-            smart_money_val = "เจ้ามือเก็บของเงียบๆ (Accumulation)" if total_range_pct < 10 else "เจ้ามือดันราคาลากเบรกเอาท์ (Markup)"
+            # ประเมินพฤติกรรม เม่า vs เจ้ามือ จากทิศทาง Vol Change
+            retail_flow_val = "เม่าทยอยขายทำกำไร / วอลุ่มหด (-)" if vol_change_pct < 0 else "เม่าแห่ไล่ซื้อเก็งกำไร (+)"
+            smart_money_val = "เจ้ามือซุ่มเก็บของเงียบๆ (Accumulation)" if total_range_pct < 10 and vol_change_pct >= 0 else ("เจ้ามือลากเบรกเอาท์ (Markup)" if vol_change_pct > 20 else "รอจังหวะสะสมพลัง")
 
             results[label] = {
                 'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
                 'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
-                'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct,
+                'poc_price': poc_price, 'vol_change_pct': vol_change_pct,
                 'retail_flow': retail_flow_val, 'smart_money': smart_money_val
             }
         except:
             results[label] = {
                 'start_date': None, 'high': 0.0, 'low': 0.0,
                 'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
-                'poc_price': None, 'vol_spike_today': 0.0, 'vol_period_change': 0.0,
+                'poc_price': None, 'vol_change_pct': 0.0,
                 'retail_flow': 'N/A', 'smart_money': 'N/A'
             }
         
@@ -151,7 +160,7 @@ else:
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการ (เช่น NVDA, DELTA.BK, PTT.BK)", "NVDA")
     st.sidebar.info("ระบบจะดึงข้อมูลตัวนี้มาแกะรอยทันที!")
 
-st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือ vs เม่า & วิเคราะห์นวัตกรรม (รวม SET100)")
+st.markdown(f"## 🎯 เรดาร์จับตา % Vol Change & พฤติกรรมเจ้ามือ (นวัตกรรม & SET100)")
 
 if st.button("🚀 เริ่มรันสแกนข้อมูลเชิงลึก (ลุยกันเลยเพื่อน!)"):
     target_tickers = []
@@ -214,13 +223,13 @@ if st.button("🚀 เริ่มรันสแกนข้อมูลเช�
                 # กำหนดสถานะหุ้นและเหตุผลเล่นรอบสั้น
                 if range_pct <= 0.12:
                     stock_status = "🟡 กำลังสร้างฐานสะสมพลัง (Accumulation Base)"
-                    swing_reason = "หุ้นพักตัวออกข้าง Volume แห้ง เม่าเริ่มถอดใจขายหนี แต่เจ้ามือตั้งรับโซนแนวรับแน่น เหมาะกับการทยอยสะสมไม้แรกเพื่อรอจังหวะสะบัดหัวขึ้น"
+                    swing_reason = "หุ้นพักตัวออกข้าง Volume แห้ง เม่าถอดใจขายทำกำไร แต่ Smart Money ทยอยตั้งรับโซนแนวรับแน่น เหมาะกับการทยอยสะสมไม้แรกเพื่อรอจังหวะสะบัดรอบใหญ่"
                 elif latest_rsi > 70:
                     stock_status = "🔴 อยู่ในโซนร้อนแรง / จ่อทำกำไร (Overbought / Markup Phase)"
                     swing_reason = "ราคาพุ่งทำนิวไฮพร้อมวอลุ่มหนาแน่น เม่าแห่ไล่ซื้อตามข่าวสั้น ระวังแรงขายทำกำไรระยะสั้น เหมาะกับคนมีของเตรียมทยอยขายล็อกกำไร (TP1)"
                 else:
                     stock_status = "🟢 กำลังเบรกเอาท์เปลี่ยนรอบ (Momentum Breakout)"
-                    swing_reason = "เกิดสัญญาณวอลุ่มเข้าทะลุแนวต้านย่อย Smart Money ดันราคาออกกรอบสะสม เป็นจังหวะเข้าเล่นรอบสั้นตามโมเมนตัมที่ดีเยี่ยม"
+                    swing_reason = "เกิดสัญญาณวอลุ่มพุ่งทะลุต้านย่อย Smart Money ดันราคาออกจากกรอบสะสม เป็นจังหวะเข้าเล่นรอบสั้นตามโมเมนตัมที่ดีเยี่ยม"
 
                 moat_status = "โครงสร้างพื้นฐานแกร่ง / มีความได้เปรียบเชิงแข่งขันสูงและสิทธิบัตรคุ้มครอง"
                 
@@ -259,16 +268,17 @@ if st.button("🚀 เริ่มรันสแกนข้อมูลเช�
                 st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **เหตุผลเชิงกลยุทธ์การเล่นรอบสั้น:** {item['Swing_Reason']}")
 
                 st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอย เม่า vs เจ้ามือ (Retail & Smart Money Flow Dynamics)")
+                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change (ปัจจุบันเทียบอดีต) & พฤติกรรมเม่า/เจ้ามือ")
                 tf_rows = []
-                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
                         info = item['TF_Data'][tf_name]
                         poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
                         tf_rows.append({
-                            'ช่วงเวลา': tf_name, 'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
+                            'ไทม์เฟรม': tf_name, 'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
                             'กรอบ (Range)': f"{info['range_pct']}%",
                             'POC (ฐานราคาหนาแน่น)': poc_display,
+                            '📊 % Vol Change': f"{info['vol_change_pct']:+.1f}%",
                             '👥 สถานะเม่า (Retail)': info['retail_flow'],
                             '🐋 สถานะเจ้ามือ (Smart Money)': info['smart_money']
                         })
