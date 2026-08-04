@@ -5,103 +5,121 @@ import time
 import numpy as np
 
 # ตั้งค่าหน้าจอ Streamlit
-st.set_page_config(page_title="Pro Innovation & Smart Money 3-Step Screener", layout="wide")
+st.set_page_config(page_title="Ultimate Global & Thai Market Screener", layout="wide")
 
 # FMP API Key ของมึง
 API_KEY = "akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
 
-st.title("🚀 Pro Innovation & Smart Money Screener (RSI, Volume & 3-Step Strategy)")
-st.markdown("ระบบสแกนหุ้นนวัตกรรม สิทธิบัตร วิเคราะห์งบการเงิน พฤติกรรมเจ้ามือ (RSI & Volume) พร้อมแผนแบ่งเข้าซื้อ 3 ไม้และกลยุทธ์สั้น-ยาว")
+st.title("🚀 Ultimate Global (S&P 500 All Sectors) & SET100 Screener")
+st.markdown("ระบบสแกนหุ้นครบทุก Sector ของ S&P 500 และ SET100 ไทย คัดกรองพฤติกรรมเจ้ามือ (RSI & Volume) พร้อมวิเคราะห์งบและแผน 3 ไม้")
 
-# 1. รายชื่อหุ้นกลุ่มนวัตกรรมและเทคโนโลยีตัวท็อป S&P 500 (เน้นหุ้นที่มีสิทธิบัตรและเติบโตสูง)
+# 1. รวบรวมรายชื่อหุ้น S&P 500 ครบทุก Sector หลัก และ SET100 แบบจัดเต็ม
 @st.cache_data(ttl=86400)
-def get_innovation_stock_groups():
+def get_comprehensive_market_groups():
     return {
-        "Tech & AI Innovators (Tech)": [
+        "🇺🇸 S&P 500: Technology & AI Patents": [
             'AAPL', 'MSFT', 'NVDA', 'AVGO', 'ORCL', 'CRM', 'AMD', 'ADBE', 'ACN', 'CSCO', 
-            'QCOM', 'IBM', 'TXN', 'INTU', 'AMAT', 'NOW', 'LRCX', 'ADI', 'MU', 'PANW'
+            'QCOM', 'IBM', 'TXN', 'INTU', 'AMAT', 'NOW', 'LRCX', 'ADI', 'MU', 'PANW', 
+            'SNPS', 'CDNS', 'KLAC', 'MCHP', 'FTNT', 'ANSS', 'NXPI', 'MRVL', 'WDC', 'STX'
         ],
-        "Biotech & Medical Patents (Health)": [
+        "🇺🇸 S&P 500: Healthcare, Biotech & Pharma Patents": [
             'LLY', 'UNH', 'JNJ', 'ABBV', 'MRK', 'TMO', 'ABT', 'ISRG', 'PFE', 'AMGN', 
-            'MDT', 'BMY', 'ELV', 'CVS', 'GILD', 'REGN', 'VRTX', 'ZTS', 'BSX', 'DXCM'
+            'MDT', 'BMY', 'ELV', 'CVS', 'GILD', 'REGN', 'VRTX', 'ZTS', 'BSX', 'DXCM', 
+            'CI', 'SYK', 'BDX', 'HUM', 'GEHC', 'ILMN', 'ALGN', 'IDXX', 'BAX', 'WAT'
         ],
-        "Discretionary & EV Leaders (Consumer)": [
+        "🇺🇸 S&P 500: Consumer Discretionary & EV/Robotics": [
             'AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'LOW', 'SBUX', 'BKNG', 'TJX', 'ABNB', 
-            'MAR', 'CMG', 'ORLY', 'HLT', 'ROST', 'DHI', 'GM', 'F', 'YUM', 'EXPE'
+            'MAR', 'CMG', 'ORLY', 'HLT', 'ROST', 'DHI', 'GM', 'F', 'YUM', 'EXPE', 
+            'TSCO', 'LULU', 'AZO', 'DASH', 'RCL', 'LEN', 'PHM', 'EBAY', 'ETSY', 'BBY'
+        ],
+        "🇺🇸 S&P 500: Financials & Fintech": [
+            'BRK.B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'MS', 'GS', 'AXP', 'BLK', 
+            'C', 'SPGI', 'CB', 'PGR', 'MMC', 'USB', 'TFC', 'PNC', 'COF', 'ICE'
+        ],
+        "🇺🇸 S&P 500: Communication Services (Media & Cloud)": [
+            'GOOGL', 'GOOG', 'META', 'NFLX', 'DIS', 'CMCSA', 'TMUS', 'VZ', 'T', 'EA', 'TTWO', 'CHTR', 'OMC', 'IPG'
+        ],
+        "🇺🇸 S&P 500: Industrials & Aerospace Patents": [
+            'GE', 'CAT', 'RTX', 'UNP', 'HON', 'DE', 'LMT', 'BA', 'ETN', 'MMM', 
+            'CSX', 'NSC', 'PH', 'PCAR', 'FAST', 'URI', 'ODFL', 'CPRT', 'CTAS', 'GWW'
+        ],
+        "🇺🇸 S&P 500: Energy & Clean Tech Patents": [
+            'XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL', 
+            'WMB', 'KMI', 'DVN', 'HES', 'BKR', 'FANG', 'TRGP', 'CTRA', 'EQT', 'MRO'
+        ],
+        "🇹🇭 SET100: หุ้นไทยสภาพคล่องสูงและบลูชิพ": [
+            'ADVANC.BK', 'AOT.BK', 'BDMS.BK', 'BBL.BK', 'CPALL.BK', 'CPN.BK', 'DELTA.BK', 
+            'GPSC.BK', 'GULF.BK', 'KBANK.BK', 'KTB.BK', 'MINT.BK', 'PTT.BK', 'PTTEP.BK', 
+            'PTTGC.BK', 'SCB.BK', 'SCC.BK', 'SCGP.BK', 'TOP.BK', 'TRUE.BK', 'WHA.BK',
+            'BANPU.BK', 'BEM.BK', 'BGRIM.BK', 'BH.BK', 'BTS.BK', 'CBG.BK', 'COM7.BK', 
+            'CRC.BK', 'EA.BK', 'EGCO.BK', 'HMPRO.BK', 'IVL.BK', 'KTC.BK', 'LH.BK', 'OSP.BK',
+            'BCH.BK', 'CENTEL.BK', 'GLOBAL.BK', 'IRPC.BK', 'JMT.BK', 'STGT.BK', 'TIDLOR.BK', 'TLI.BK'
         ]
     }
 
-# 2. ฟังก์ชันวิเคราะห์แผนการเข้าซื้อ 3 ไม้ และรูปแบบการเล่น (สั้น/ยาว) ตามสถานะหุ้น
+# 2. ฟังก์ชันวิเคราะห์แผนการเข้าซื้อ 3 ไม้ และรูปแบบการเล่น
 def generate_trade_strategy(rsi, vol_cur, vol_past, roe):
-    # กำหนดรูปแบบการเล่น
-    if roe > 20:
-        play_style = "📈 เล่นได้ทั้งระยะยาว (Core Port) และเล่นรอบ (Swing)"
-    elif vol_cur > 40:
-        play_style = "⚡ เน้นเก็งกำไรระยะสั้น (Day/Swing Trade ตามข่าว)"
+    if roe > 15:
+        play_style = "📈 หุ้นคุณภาพสูง (Core Port & Swing Trade)"
+    elif vol_cur > 30:
+        play_style = "⚡ หุ้นเก็งกำไรโมเมนตัมพุ่งตามข่าว/วอลุ่ม"
     else:
-        play_style = "🐢 ทยอยสะสมลงทุนระยะกลาง-ยาว (Value/Trend Play)"
+        play_style = "🐢 หุ้นสร้างฐานสะสมพลัง (Value & Trend Play)"
 
-    # แผนการเข้าซื้อ 3 ไม้
-    if 40 <= rsi <= 60 and vol_past > 15 and vol_cur < 10:
+    if 40 <= rsi <= 60 and vol_past > 10 and vol_cur < 15:
         strategy_3_steps = (
-            "ไม้ที่ 1: ทยอยเก็บสะสมไม้แรกบริเวณฐานราคาปัจจุบัน (โซนเจ้ามือสะสม)\n"
-            "ไม้ที่ 2: เติมเงินซื้อเพิ่มเมื่อราคายืนเหนือเส้นค่าเฉลี่ยหรือมีข่าวสิทธิบัตรหนุน\n"
-            "ไม้ที่ 3: จัดไม้สุดท้ายเต็มพอร์ตเมื่อเกิดสัญญาณ Breakout เบรกแนวต้านสำคัญ"
+            "ไม้ที่ 1 (30%): ทยอยเก็บสะสมบริเวณฐานราคาปัจจุบัน (โซนเจ้ามือสะสมของ)\n"
+            "ไม้ที่ 2 (40%): เติมเงินเพิ่มเมื่อราคายืนเหนือเส้นค่าเฉลี่ยหรือมีข่าวสิทธิบัตร/งบออก\n"
+            "ไม้ที่ 3 (30%): อัดไม้สุดท้ายเต็มพอร์ตเมื่อเกิดสัญญาณ Breakout เบรกแนวต้าน"
         )
     elif rsi > 65:
         strategy_3_steps = (
-            "ไม้ที่ 1: ชะลอการไล่ราคา รอดูจังหวะย่อตัว (Overbought Zone)\n"
-            "ไม้ที่ 2: ทยอยรับไม้แรกเมื่อราคาย่อตัวลงมาทดสอบแนวรับสำคัญ\n"
-            "ไม้ที่ 3: เติมไม้สุดท้ายเมื่อกราฟฟอร์มตัวสร้างฐานราคาใหม่สำเร็จ"
+            "ไม้ที่ 1 (20%): ชะลอการไล่ราคา รอจังหวะย่อตัว (Overbought Zone)\n"
+            "ไม้ที่ 2 (40%): ทยอยรับเพิ่มเมื่อราคาย่อตัวทดสอบแนวรับหลัก\n"
+            "ไม้ที่ 3 (40%): เติมไม้สุดท้ายเมื่อกราฟฟอร์มตัวสร้างฐานรอบใหม่สำเร็จ"
         )
     else:
         strategy_3_steps = (
-            "ไม้ที่ 1: เปิดไม้แรกเบาๆ สำหรับหุ้นที่กำลังสร้างกรอบสะสมพลัง\n"
-            "ไม้ที่ 2: ถัวเฉลี่ยหรือเพิ่มน้ำหนักเมื่อวอลุ่มซื้อเริ่มหนาแน่นขึ้น\n"
-            "ไม้ที่ 3: อัดไม้สุดท้ายเมื่อเทรนด์กลับตัวเป็นขาขึ้นชัดเจน (Higher High)"
+            "ไม้ที่ 1 (30%): เปิดไม้แรกเบาๆ สำหรับหุ้นที่กำลังสร้างกรอบสะสม\n"
+            "ไม้ที่ 2 (30%): ถัวเฉลี่ยหรือเพิ่มน้ำหนักเมื่อวอลุ่มซื้อเริ่มหนาแน่น\n"
+            "ไม้ที่ 3 (40%): อัดไม้สุดท้ายเมื่อเทรนด์กลับตัวเป็นขาขึ้นชัดเจน (Higher High)"
         )
         
     return play_style, strategy_3_steps
 
-# 3. ฟังก์ชันสแกนหลัก ประมวลผล RSI, Vol Change อดีต/ปัจจุบัน และงบการเงิน
-@st.cache_data(ttl=3600)
-def fetch_advanced_screener(symbols, group_name):
+# 3. ฟังก์ชันสแกนแบบตรงจุด ลดภาระ API
+def fetch_targeted_screener(symbols, group_name):
     stock_data = []
     progress_bar = st.progress(0)
     total = len(symbols)
     
+    st.info(f"กำลังสแกนคัดกรองหุ้นทั้งหมด {total} ตัวในกลุ่ม {group_name}...")
+    
     for i, symbol in enumerate(symbols):
         try:
-            # ดึง Quote ปัจจุบัน
             url_quote = f"https://financialmodelingprep.com/api/v3/quote/{symbol}?apikey={API_KEY}"
-            res_q = requests.get(url_quote).json()
-            
-            # ดึงงบ TTM
-            url_metrics = f"https://financialmodelingprep.com/api/v3/key-metrics-ttm/{symbol}?apikey={API_KEY}"
-            res_m = requests.get(url_metrics).json()
-
-            # ดึงประวัติราคาและโวลุ่ม 30 วันย้อนหลัง
-            url_hist = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?serietype=line&apikey={API_KEY}"
-            res_h = requests.get(url_hist).json()
+            res_q = requests.get(url_quote, timeout=3).json()
             
             if isinstance(res_q, list) and len(res_q) > 0:
                 q = res_q[0]
-                m = res_m[0] if (isinstance(res_m, list) and len(res_m) > 0) else {}
-                
                 price = q.get('price', 0)
                 vol_current = q.get('volume', 0)
                 avg_vol = q.get('avgVolume', vol_current if vol_current > 0 else 1)
-                
-                # %Vol Change ปัจจุบันเทียบกับค่าเฉลี่ย
                 vol_change_current = ((vol_current - avg_vol) / avg_vol) * 100 if avg_vol > 0 else 0
                 
-                # ดึงข้อมูลประวัติเพื่อคำนวณ RSI และ Vol อดีต
+                url_metrics = f"https://financialmodelingprep.com/api/v3/key-metrics-ttm/{symbol}?apikey={API_KEY}"
+                url_hist = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?serietype=line&apikey={API_KEY}"
+                
+                res_m = requests.get(url_metrics, timeout=3).json()
+                res_h = requests.get(url_hist, timeout=3).json()
+                
+                m = res_m[0] if (isinstance(res_m, list) and len(res_m) > 0) else {}
                 hist_list = res_h.get('historical', []) if isinstance(res_h, dict) else []
+                
                 if hist_list and len(hist_list) > 15:
                     prices_30d = [x.get('close', price) for x in hist_list[:30]][::-1]
                     volumes_30d = [x.get('volume', 0) for x in hist_list[:30]][::-1]
                     
-                    # คำนวณ RSI 14 วัน
                     deltas = np.diff(prices_30d)
                     seed = deltas[:14]
                     up = seed[seed >= 0].sum() / 14
@@ -109,7 +127,6 @@ def fetch_advanced_screener(symbols, group_name):
                     rs = up / (down + 1e-9)
                     rsi_value = 100 - (100 / (1 + rs))
                     
-                    # %Vol Change อดีต
                     avg_past_vol = np.mean(volumes_30d[:-5]) if len(volumes_30d) > 5 else avg_vol
                     recent_past_vol = np.mean(volumes_30d[-5:])
                     vol_change_past = ((recent_past_vol - avg_past_vol) / (avg_past_vol + 1e-9)) * 100
@@ -117,12 +134,11 @@ def fetch_advanced_screener(symbols, group_name):
                     rsi_value = 50.0
                     vol_change_past = 0.0
 
-                # เช็กสถานะพฤติกรรมเจ้ามือ
-                if rsi_value > 65 and vol_change_current > 40:
+                if rsi_value > 65 and vol_change_current > 30:
                     smart_status = "🚀 เจ้ามือลากราคาแรง (Markup / Breakout)"
-                elif 40 <= rsi_value <= 60 and vol_change_past > 15 and vol_change_current < 10:
+                elif 40 <= rsi_value <= 60 and vol_change_past > 10 and vol_change_current < 15:
                     smart_status = "🟢 เจ้ามือกำลังสะสมของเงียบๆ (Accumulation)"
-                elif rsi_value < 35 and vol_change_current > 30:
+                elif rsi_value < 35 and vol_change_current > 25:
                     smart_status = "⚠️ แรงขายตื่นตระหนก (Panic Sell / Washout)"
                 else:
                     smart_status = "⚪ ไร้ทิศทางชัดเจน (Consolidation)"
@@ -148,39 +164,56 @@ def fetch_advanced_screener(symbols, group_name):
         except Exception as e:
             pass
         
-        time.sleep(0.2)
+        time.sleep(0.1)
         progress_bar.progress((i + 1) / total)
         
     progress_bar.empty()
     return pd.DataFrame(stock_data)
 
 # --- Sidebar UI ---
-st.sidebar.header("🛠️ แผงควบคุมเงื่อนไขสแกนหุ้นนวัตกรรม")
-groups_dict = get_innovation_stock_groups()
-chosen_group = st.sidebar.selectbox("เลือกกลุ่มอุตสาหกรรมนวัตกรรม", list(groups_dict.keys()))
+st.sidebar.header("🛠️ แผงควบคุมเลือกตลาดและ Sector")
+groups_dict = get_comprehensive_market_groups()
+chosen_market_group = st.sidebar.selectbox("เลือกกลุ่มตลาด / Sector ที่สนใจ", list(groups_dict.keys()))
 
-selected_symbols = groups_dict[chosen_group]
-st.sidebar.info(f"จำนวนหุ้นในกลุ่ม: {len(selected_symbols)} ตัว")
+selected_symbols = groups_dict[chosen_market_group]
+st.sidebar.info(f"จำนวนหุ้นในกลุ่มนี้: {len(selected_symbols)} ตัว")
 
-scan_button = st.sidebar.button("🚀 เริ่มสแกนพฤติกรรมเจ้ามือ & แผน 3 ไม้")
+scan_button = st.sidebar.button("🚀 สแกนและวิเคราะห์เชิงลึกตามเงื่อนไข")
 
 # --- Main Dashboard ---
 if scan_button:
-    with st.spinner(f"กำลังวิเคราะห์ RSI, โวลุ่มอดีต/ปัจจุบัน และวางแผนกลยุทธ์ในกลุ่ม {chosen_group}..."):
-        df = fetch_advanced_screener(selected_symbols, chosen_group)
+    df = fetch_targeted_screener(selected_symbols, chosen_market_group)
+    
+    if not df.empty:
+        st.success(f"สแกนและวิเคราะห์สำเร็จ! พบข้อมูลทั้งหมด {len(df)} บริษัทในกลุ่มนี้")
+        st.subheader(f"📊 ผลการสแกนและพฤติกรรมเจ้ามือ: {chosen_market_group}")
         
-        if not df.empty:
-            st.success(f"สแกนสำเร็จ! วิเคราะห์ข้อมูลมาได้ทั้งหมด {len(df)} บริษัท")
-            st.subheader(f"📊 ผลการสแกนเชิงลึกและแผนการลงทุน: {chosen_group}")
-            
-            st.dataframe(df, use_container_width=True)
-            
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 ดาวน์โหลดผลการสแกนและแผนเทรด (CSV)",
-                data=csv,
-                file_name=f"innovation_screener_3steps_{chosen_group.replace(' ', '_')}.csv",
-                mime='text/csv',
-            )
+        status_filter = st.selectbox("🔍 กรองดูเฉพาะสถานะเจ้ามือ:", ["ทั้งหมด"] + list(df['Smart Money Status'].unique()))
+        if status_filter != "ทั้งหมด":
+            df_filtered = df[df['Smart Money Status'] == status_filter]
         else:
-            st.warning("เกิดข้อผิดพลาดในการเชื่อมต่อข้อมูล ลองกดใหม่อีกครั้งเพื่อน")
+            df_filtered = df
+            
+        st.dataframe(df_filtered, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("💡 วิเคราะห์เจาะลึกงบการเงิน สตอรี่สิทธิบัตร และแผนเข้าซื้อ 3 ไม้รายตัว")
+        
+        for index, row in df_filtered.iterrows():
+            with st.expander(f"📌 {row['Symbol']} - {row['Company']} | ราคา: ${row['Price']} | {row['Smart Money Status']}"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**📈 สไตล์การลงทุน:** {row['Play Style']}")
+                    st.markdown(f"**📊 งบการเงินเบื้องต้น:**\n- PE Ratio: {row['PE']}\n- ROE: {row['ROE (%)']}%\n- Free Cash Flow/Share: {row['FCF/Share']}")
+                with col2:
+                    st.markdown(f"**🎯 แผนการเข้าซื้อ 3 ไม้ (Scale-in Strategy):**\n```text\n{row['3-Step Entry Plan']}\n```")
+        
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 ดาวน์โหลดผลการสแกนทั้งหมด (CSV)",
+            data=csv,
+            file_name=f"screener_{chosen_market_group.replace(' ', '_').replace(':', '')}.csv",
+            mime='text/csv',
+        )
+    else:
+        st.warning("เกิดข้อผิดพลาดในการเชื่อมต่อ ลองกดสแกนใหม่อีกครั้งเพื่อน")
