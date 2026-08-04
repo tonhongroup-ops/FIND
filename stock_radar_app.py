@@ -10,10 +10,10 @@ st.set_page_config(page_title="Ultimate Innovation & Swing Trade Screener", layo
 # FMP API Key ของมึง
 API_KEY = "akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
 
-st.title("🚀 Ultimate Innovation & Swing Trade Screener (S&P 500 ครบถ้วนทุกตัว & SET100)")
-st.markdown("ระบบสแกนหุ้นนวัตกรรม สิทธิบัตร งบการเงินเชิงลึก และวิเคราะห์รอบเก็งกำไรระยะสั้น (ดึง S&P 500 ครบทุก 500 ตัว แบบหน่วงความเร็วปลอดภัย)")
+st.title("🚀 Ultimate Innovation & Swing Trade Screener (S&P 500 ทั้งเข่ง & SET100)")
+st.markdown("ระบบสแกนหุ้นนวัตกรรม สิทธิบัตร งบการเงิน และวิเคราะห์รอบเก็งกำไรระยะสั้น (เวอร์ชันแก้อาการตัวเลขเป็นศูนย์)")
 
-# 1. ฟังก์ชันดึงรายชื่อหุ้น S&P 500 ครบถ้วนทุกตัวและทุก Sector จาก FMP โดยตรง (มีชุดสำรองพรีเมียมรองรับกันเหนียว)
+# 1. ฟังก์ชันดึงรายชื่อหุ้น S&P 500 ครบถ้วนทุกตัวและทุก Sector
 @st.cache_data(ttl=86400)
 def get_complete_sp500_sectors():
     url = f"https://financialmodelingprep.com/api/v3/sp500_constituent?apikey={API_KEY}"
@@ -113,7 +113,7 @@ def get_set100_symbols():
         'TQM.BK', 'TRUE.BK', 'TTB.BK', 'TU.BK', 'VGI.BK', 'WHA.BK', 'WHAUP.BK'
     ]
 
-# 3. ฟังก์ชันดึงข้อมืองบการเงิน เทคนิคอล %Vol Change และสถานะเจ้ามือ (หน่วงเวลา 0.08 วินาที ป้องกัน Rate Limit)
+# 3. ฟังก์ชันดึงข้อมืองบการเงิน เทคนิคอล %Vol Change และสถานะเจ้ามือ (ปรับปรุงการดึงข้อมูลให้แม่นยำขึ้น)
 @st.cache_data(ttl=3600)
 def fetch_swing_metrics(symbols, group_name):
     stock_data = []
@@ -131,13 +131,15 @@ def fetch_swing_metrics(symbols, group_name):
             url_hist = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?serietype=line&apikey={API_KEY}"
             res_h = requests.get(url_hist).json()
             
-            if res_q:
-                q = res_q[0] if isinstance(res_q, list) and len(res_q) > 0 else {}
-                m = res_m[0] if isinstance(res_m, list) and len(res_m) > 0 else {}
+            if isinstance(res_q, list) and len(res_q) > 0:
+                q = res_q[0]
+                m = res_m[0] if (isinstance(res_m, list) and len(res_m) > 0) else {}
                 
                 price = q.get('price', 0)
                 vol_current = q.get('volume', 0)
-                avg_vol = q.get('avgVolume', vol_current if vol_current > 0 else 1)
+                avg_vol = q.get('avgVolume', 0)
+                if not avg_vol or avg_vol == 0:
+                    avg_vol = vol_current if vol_current > 0 else 1
                 
                 vol_change_pct = ((vol_current - avg_vol) / avg_vol) * 100 if avg_vol > 0 else 0
                 
@@ -150,15 +152,15 @@ def fetch_swing_metrics(symbols, group_name):
                     avg_past_vol = np.mean(volumes_30d[1:]) if len(volumes_30d) > 1 else 1
                     vol_change_past = ((volumes_30d[0] - avg_past_vol) / avg_past_vol) * 100
                 else:
-                    max_price = price * 1.1
-                    min_price = price * 0.9
+                    max_price = price * 1.1 if price else 100
+                    min_price = price * 0.9 if price else 90
                     vol_change_past = vol_change_pct
 
-                # เช็กสถานะเจ้ามือ (ลากราคา / สะสมของ)
+                # เช็กสถานะเจ้ามือ
                 if vol_change_pct > 50 and price >= min_price * 1.05:
                     status_smart_money = "🔥 เจ้ามือลากราคา (Markup Phase)"
                     recommendation = "ทยอยซื้อตามกรอบสั้น (Breakout Play)"
-                elif vol_change_pct > 20 and abs(price - min_price) / min_price < 0.05:
+                elif vol_change_pct > 20 and abs(price - min_price) / (min_price or 1) < 0.05:
                     status_smart_money = "🟢 เจ้ามือกำลังสะสมของ (Accumulation)"
                     recommendation = "สะสมไม้แรก รอจังหวะข่าวสิทธิบัตรหนุน"
                 else:
@@ -183,17 +185,16 @@ def fetch_swing_metrics(symbols, group_name):
         except Exception as e:
             pass
         
-        # หน่วงเวลาเพิ่มความเสถียร ป้องกันยิงรัวเกินจน API บล็อก
-        time.sleep(0.08)
+        # หน่วงเวลา 0.1 วินาที ป้องกันยิงถี่เกินไปจนติด Block
+        time.sleep(0.1)
         progress_bar.progress((i + 1) / total)
         
     progress_bar.empty()
     return pd.DataFrame(stock_data)
 
 # --- Sidebar UI ---
-st.sidebar.header("🛠️ แผงควบคุมการสแกนและค้นหา (S&P 500 ทั้งเข่ง)")
+st.sidebar.header("🛠️ แผงควบคุมการสแกนและค้นหา")
 
-# ช่องค้นหารายตัว Ticker Lookup
 custom_ticker = st.sidebar.text_input("🔍 ค้นหารายตัว (Ticker Lookup เช่น AAPL, MSFT, PTT.BK):", "").upper()
 
 st.sidebar.markdown("---")
@@ -210,7 +211,7 @@ if market_choice == "S&P 500 (ครบทุกตัว แยก Sector)":
     chosen_sector = st.sidebar.selectbox("เลือก Sector ของ S&P 500", list(sectors_dict.keys()))
     selected_symbols = sectors_dict[chosen_sector]
     group_label = f"S&P 500 - {chosen_sector}"
-    st.sidebar.info(f"จำนวนหุ้นใน Sector นี้: {len(selected_symbols)} ตัว (ครบถ้วนทั้งเข่ง)")
+    st.sidebar.info(f"จำนวนหุ้นใน Sector นี้: {len(selected_symbols)} ตัว")
 else:
     selected_symbols = get_set100_symbols()
     group_label = "SET100 (All)"
@@ -227,7 +228,6 @@ if custom_ticker:
             st.success("วิเคราะห์สำเร็จ!")
             st.dataframe(df_single, use_container_width=True)
             
-            # วางแผนกลยุทธ์ตามกรอบเวลา Time Frame (1 Day ถึง 3 Months)
             st.markdown("### ⏱️ แผนเทรดสั้น & กรอบเวลา (Time Frame Strategy)")
             row = df_single.iloc[0]
             p = row['Price']
@@ -247,7 +247,7 @@ if custom_ticker:
 
 if scan_button:
     if selected_symbols:
-        with st.spinner(f"กำลังสแกน S&P 500 ทั้งเข่งในกลุ่ม {group_label} (หน่วงเวลาความปลอดภัย)..."):
+        with st.spinner(f"กำลังสแกน S&P 500 ทั้งเข่งในกลุ่ม {group_label}..."):
             df = fetch_swing_metrics(selected_symbols, group_label)
             
             if not df.empty:
@@ -260,7 +260,7 @@ if scan_button:
                     label="📥 ดาวน์โหลดผลการสแกน (CSV)",
                     data=csv,
                     file_name=f"complete_screener_{group_label.replace(' ', '_')}.csv",
-                    mime='text/css',
+                    mime='text/csv',
                 )
             else:
                 st.warning("ไม่พบข้อมูล ลองเช็ก API Key หรืออินเทอร์เน็ตดูอีกทีเพื่อน")
