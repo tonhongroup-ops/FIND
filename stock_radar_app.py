@@ -1,230 +1,376 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import requests
 import time
-import numpy as np
 
-# ตั้งค่าหน้าจอ Streamlit
-st.set_page_config(page_title="Ultimate Global & Thai Market Screener", layout="wide")
+st.set_page_config(page_title="Deep Innovation & Swing Trading Radar Pro", layout="wide")
 
 # FMP API Key ของมึง
 API_KEY = "akyx1POpzLt8geYg7oCuIvQW0qIsQjnh"
 
-st.title("🚀 Ultimate Global (S&P 500 All Sectors) & SET100 Screener")
-st.markdown("ระบบสแกนหุ้นครบทุก Sector ของ S&P 500 และ SET100 ไทย คัดกรองพฤติกรรมเจ้ามือ (RSI & Volume) พร้อมวิเคราะห์งบและแผน 3 ไม้")
+st.title("🎯 Deep Innovation & Swing Trading Radar Pro (FMP Edition)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม สิทธิบัตร & แกะรอยเจ้ามือสะสม พร้อมวิเคราะห์ Catalyst ล่วงหน้า 2 เดือน (ดึงข้อมูลผ่าน FMP)")
 
-# 1. รวบรวมรายชื่อหุ้น S&P 500 ครบทุก Sector หลัก และ SET100 แบบจัดเต็ม
 @st.cache_data(ttl=86400)
-def get_comprehensive_market_groups():
-    return {
-        "🇺🇸 S&P 500: Technology & AI Patents": [
-            'AAPL', 'MSFT', 'NVDA', 'AVGO', 'ORCL', 'CRM', 'AMD', 'ADBE', 'ACN', 'CSCO', 
-            'QCOM', 'IBM', 'TXN', 'INTU', 'AMAT', 'NOW', 'LRCX', 'ADI', 'MU', 'PANW', 
-            'SNPS', 'CDNS', 'KLAC', 'MCHP', 'FTNT', 'ANSS', 'NXPI', 'MRVL', 'WDC', 'STX'
-        ],
-        "🇺🇸 S&P 500: Healthcare, Biotech & Pharma Patents": [
-            'LLY', 'UNH', 'JNJ', 'ABBV', 'MRK', 'TMO', 'ABT', 'ISRG', 'PFE', 'AMGN', 
-            'MDT', 'BMY', 'ELV', 'CVS', 'GILD', 'REGN', 'VRTX', 'ZTS', 'BSX', 'DXCM', 
-            'CI', 'SYK', 'BDX', 'HUM', 'GEHC', 'ILMN', 'ALGN', 'IDXX', 'BAX', 'WAT'
-        ],
-        "🇺🇸 S&P 500: Consumer Discretionary & EV/Robotics": [
-            'AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'LOW', 'SBUX', 'BKNG', 'TJX', 'ABNB', 
-            'MAR', 'CMG', 'ORLY', 'HLT', 'ROST', 'DHI', 'GM', 'F', 'YUM', 'EXPE', 
-            'TSCO', 'LULU', 'AZO', 'DASH', 'RCL', 'LEN', 'PHM', 'EBAY', 'ETSY', 'BBY'
-        ],
-        "🇺🇸 S&P 500: Financials & Fintech": [
-            'BRK.B', 'JPM', 'V', 'MA', 'BAC', 'WFC', 'MS', 'GS', 'AXP', 'BLK', 
-            'C', 'SPGI', 'CB', 'PGR', 'MMC', 'USB', 'TFC', 'PNC', 'COF', 'ICE'
-        ],
-        "🇺🇸 S&P 500: Communication Services (Media & Cloud)": [
-            'GOOGL', 'GOOG', 'META', 'NFLX', 'DIS', 'CMCSA', 'TMUS', 'VZ', 'T', 'EA', 'TTWO', 'CHTR', 'OMC', 'IPG'
-        ],
-        "🇺🇸 S&P 500: Industrials & Aerospace Patents": [
-            'GE', 'CAT', 'RTX', 'UNP', 'HON', 'DE', 'LMT', 'BA', 'ETN', 'MMM', 
-            'CSX', 'NSC', 'PH', 'PCAR', 'FAST', 'URI', 'ODFL', 'CPRT', 'CTAS', 'GWW'
-        ],
-        "🇺🇸 S&P 500: Energy & Clean Tech Patents": [
-            'XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL', 
-            'WMB', 'KMI', 'DVN', 'HES', 'BKR', 'FANG', 'TRGP', 'CTRA', 'EQT', 'MRO'
-        ],
-        "🇹🇭 SET100: หุ้นไทยสภาพคล่องสูงและบลูชิพ": [
-            'ADVANC.BK', 'AOT.BK', 'BDMS.BK', 'BBL.BK', 'CPALL.BK', 'CPN.BK', 'DELTA.BK', 
-            'GPSC.BK', 'GULF.BK', 'KBANK.BK', 'KTB.BK', 'MINT.BK', 'PTT.BK', 'PTTEP.BK', 
-            'PTTGC.BK', 'SCB.BK', 'SCC.BK', 'SCGP.BK', 'TOP.BK', 'TRUE.BK', 'WHA.BK',
-            'BANPU.BK', 'BEM.BK', 'BGRIM.BK', 'BH.BK', 'BTS.BK', 'CBG.BK', 'COM7.BK', 
-            'CRC.BK', 'EA.BK', 'EGCO.BK', 'HMPRO.BK', 'IVL.BK', 'KTC.BK', 'LH.BK', 'OSP.BK',
-            'BCH.BK', 'CENTEL.BK', 'GLOBAL.BK', 'IRPC.BK', 'JMT.BK', 'STGT.BK', 'TIDLOR.BK', 'TLI.BK'
-        ]
+def get_comprehensive_universe():
+    universe = {
+        "💻 1. Information Technology, AI & Semiconductors (XLK / SMH)": {
+            'NVDA': 'สถาปัตยกรรมชิป AI & CUDA Software Ecosystem ผูกขาดตลาดอันดับหนึ่ง',
+            'AAPL': 'Ecosystem ฮาร์ดแวร์, บริการ & สิทธิบัตรชิป Apple Silicon',
+            'MSFT': 'Moat ซอฟต์แวร์องค์กร, คลาวด์ Azure, ผูกขาด AI ร่วมกับ OpenAI',
+            'AVGO': 'ชิปเครือข่ายความเร็วสูงพิเศษ & Custom AI Silicon สำหรับดาต้าเซ็นเตอร์',
+            'AMD': 'ชิปประมวลผลประสิทธิภาพสูง CPU/GPU และฮาร์ดแวร์ AI ทางเลือก',
+            'ARM': 'เจ้าของสถาปัตยกรรมชิปมือถือและชิป AI ใช้พลังงานต่ำทั่วโลก',
+            'QCOM': 'สิทธิบัตรหลักเทคโนโลยีสื่อสารไร้สาย 5G/6G และ Edge AI ชิป',
+            'INTC': 'การพลิกฟื้นกิจการโรงงานผลิตชิปขั้นสูง (Foundry) และสิทธิบัตร x86',
+            'MU': 'ผู้นำนวัตกรรมหน่วยความจำ High Bandwidth Memory (HBM) สำหรับชิป AI',
+            'AMAT': 'วิศวกรรมวัสดุและอุปกรณ์ผลิตชิปขั้นสูงระดับโลก',
+            'LRCX': 'เครื่องมือและสิทธิบัตรกระบวนการผลิตเซมิคอนดักเตอร์ระดับนาโน',
+            'KLAC': 'ระบบตรวจสอบและควบคุมความสะอาดในการผลิตชิปขั้นสูง',
+            'ASML': 'ผู้ผูกขาดเครื่องพิมพ์ลายเวเฟอร์ EUV หนึ่งเดียวในโลกสำหรับชิปยุคใหม่',
+            'ADI': 'เซมิคอนดักเตอร์ระบบอนาล็อกและอุตสาหกรรมอัจฉริยะ',
+            'TXN': 'ชิปประมวลผลอนาล็อกและระบบฝังตัวความน่าเชื่อถือสูง',
+            'MCHP': 'ไมโครคอนโทรลเลอร์และเซมิคอนดักเตอร์อัจฉริยะ',
+            'NOW': 'แพลตฟอร์ม Workflow AI อัตโนมัติสำหรับองค์กรขนาดใหญ่ระดับโลก',
+            'CRM': 'Enterprise Cloud CRM และ AI Agent ผูกขาดฐานลูกค้าองค์กร',
+            'ADBE': 'ซอฟต์แวร์ครีเอทีฟดิจิทัลและสิทธิบัตรเครื่องมือ Generative AI',
+            'SNOW': 'แพลตฟอร์มคลาวด์ดาต้าแวร์เฮาส์และการวิเคราะห์ข้อมูลเชิงลึก',
+            'PLTR': 'ซอฟต์แวร์วิเคราะห์ข้อมูล Big Data และ AI ทางทหาร/องค์กร (Gotham/Foundry)',
+            'ANET': 'โครงข่ายดาต้าเซ็นเตอร์ความเร็วสูงพิเศษสำหรับ AI Infra',
+            'PANW': 'ผู้นำระบบความปลอดภัยไซเบอร์ระดับองค์กร (Cybersecurity Moat)',
+            'CRWD': 'ระบบป้องกันภัยคุกคามทางไซเบอร์แบบ Cloud-native อัจฉริยะ',
+            'FTNT': 'โครงสร้างพื้นฐานความปลอดภัยเครือข่ายและไฟร์วอลล์สิทธิบัตรแกร่ง'
+        },
+        "🤖 2. Smart Manufacturing, Industrial Robotics & Clean Energy (XLI / XLE)": {
+            'TSLA': 'นวัตกรรมยานยนต์ไฟฟ้า, ระบบขับเคลื่อนอัตโนมัติ FSD, หุ่นยนต์ฮิวแมนนอยด์ Optimus',
+            'CAT': 'เครื่องจักรกลหนัก, ระบบขุดเจาะอัตโนมัติ และยานยนต์เหมืองไร้คนขับอัจฉริยะ',
+            'DE': 'เครื่องจักรกลการเกษตรอัตโนมัติ, AI Vision และเทคโนโลยีสมาร์ทฟาร์มแม่นยำสูง',
+            'ETN': 'ระบบจัดการพลังงานไฟฟ้าและหม้อแปลงอัจฉริยะสำหรับ Data Center และโรงงาน AI',
+            'GEV': 'เทคโนโลยีโครงข่ายไฟฟ้าอัจฉริยะ กังหันลม และระบบขับเคลื่อนพลังงานหลัก',
+            'NEE': 'ยักษ์ใหญ่พลังงานสะอาดและโครงสร้างพื้นฐานกริดไฟฟ้าป้อน Data Center AI',
+            'ENPH': 'เทคโนโลยีไมโครอินเวอร์เตอร์และระบบกักเก็บพลังงานแสงอาทิตย์อัจฉริยะ',
+            'FSLR': 'สิทธิบัตรการผลิตแผงโซลาร์เซลล์เทคโนโลยีฟิล์มบางขั้นสูงในสหรัฐฯ',
+            'CEG': 'ผู้ผลิตพลังงานคาร์บอนต่ำและโรงไฟฟ้านิวเคลียร์รายใหญ่ที่สุดของสหรัฐฯ',
+            'HON': 'ระบบอัตโนมัติในโรงงาน, หุ่นยนต์คลังสินค้าอัจฉริยะ และเทคโนโลยีอาคารประหยัดพลังงาน',
+            'ROK': 'ซอฟต์แวร์และฮาร์ดแวร์ระบบอัตโนมัติสำหรับโรงงานอัจฉริยะ (The Connected Enterprise)',
+            'EMR': 'ผู้นำนวัตกรรมระบบควบคุมอัตโนมัติระดับอุตสาหกรรม (Industrial Automation)',
+            'PWR': 'ผู้รับเหมาโครงสร้างพื้นฐานระบบไฟฟ้าแรงสูงและดาต้าเซ็นเตอร์เบอร์หนึ่ง',
+            'LIN': 'ก๊าซอุตสาหกรรมและนวัตกรรมเคมีภัณฑ์ไฮโดรเจนสะอาดระดับโลก',
+            'DELL': 'เซิร์ฟเวอร์โครงสร้างพื้นฐาน AI Infrastructure และฮาร์ดแวร์องค์กร'
+        },
+        "🧬 3. Biotech, Healthcare & Medical Robotics (XLV)": {
+            'ISRG': 'หุ่นยนต์ผ่าตัดแผลเล็ก Da Vinci (สิทธิบัตรแขนกลเชิงลึก ผูกขาดตลาดร้อยเปอร์เซ็นต์)',
+            'LLY': 'ยารักษาโรคเรื้อรังและยาลดน้ำหนัก/เบาหวานตัวท็อป (Mounjaro/Zepbound)',
+            'NVO': 'นวัตกรรมยารักษาโรคอ้วนและเบาหวานระดับโลก (Wegovy/Ozempic)',
+            'UNH': 'ระบบนิเวศประกันสุขภาพและบริการเทคโนโลยีการแพทย์ขนาดใหญ่',
+            'JNJ': 'ความหลากหลายของเวชภัณฑ์และอุปกรณ์การแพทย์ระดับโลก',
+            'ABBV': 'ยารักษาโรคภูมิคุ้มกันและมะเร็งเฉพาะทางที่มีสิทธิบัตรคุ้มครอง',
+            'MRK': 'นวัตกรรมยารักษามะเร็งระดับโลก (Keytruda)',
+            'PFE': 'นวัตกรรมวัคซีนและเวชภัณฑ์ระดับโลก',
+            'AMGN': 'เทคโนโลยีชีวภาพและยารักษาโรคชีววัตถุขั้นสูง',
+            'TMO': 'เครื่องมือวิทยาศาสตร์และบริการวิจัยพันธุศาสตร์ระดับโลก',
+            'ABT': 'อุปกรณ์การแพทย์ตรวจวินิจฉัยและโภชนาการทางการแพทย์',
+            'DHR': 'เทคโนโลยีชีวภาพและเครื่องมือวิเคราะห์ทางการแพทย์ขั้นสูง',
+            'VRTX': 'ยีนเทอร์ราพีและนวัตกรรมยารักษาโรคทางพันธุกรรม (Cystic Fibrosis)',
+            'REGN': 'เทคโนโลยีชีวภาพและแอนติบอดีสังเคราะห์รักษาโรคเฉพาะทาง',
+            'ZTS': 'เวชภัณฑ์และนวัตกรรมสุขภาพสัตว์เลี้ยงระดับโลก'
+        },
+        "🛡️ 4. Consumer Staples & Defensive Moat (XLP)": {
+            'PG': 'เจ้าพ่อสินค้าอุปโภคบริโภคระดับโลก สิทธิบัตรนวัตกรรมสินค้าและ Pricing Power สูง',
+            'PEP': 'อาณาจักรขนมขบเคี้ยวและเครื่องดื่ม ซัพพลายเชนอัจฉริยะ',
+            'KO': 'แบรนด์เครื่องดื่มระดับโลกและระบบจัดจำหน่ายที่ไม่มีใครเทียบได้',
+            'WMT': 'ยักษ์ใหญ่ค้าปลีก โลจิสติกส์อัจฉริยะ และระบบจัดการสินค้าคงคลัง',
+            'COST': 'โมเดลธุรกิจสมาชิก คลังสินค้า และความภักดีของลูกค้าสูงมาก',
+            'PM': 'นวัตกรรมผลิตภัณฑ์ไร้ควัน (IQOS) และสิทธิบัตรยาสูบทางเลือก',
+            'MO': 'ผู้นำตลาดผลิตภัณฑ์นิโคตินทางเลือกและเงินสดท่วมพอร์ต',
+            'CL': 'ผู้นำผลิตภัณฑ์ทำความสะอาดและดูแลช่องปากระดับโลก',
+            'KMB': 'นวัตกรรมวัสดุเส้นใยและผลิตภัณฑ์สุขภัณฑ์ (Huggies/Kleenex)',
+            'GIS': 'นวัตกรรมอาหารสำเร็จรูปและแบรนด์อาหารแปรรูปชั้นนำ'
+        },
+        "🌐 5. Big Platforms, Fintech & High-Moat Financials (XLC / XLF)": {
+            'AMZN': 'E-commerce Ecosystem, Cloud Computing (AWS) & Logistics IP',
+            'GOOGL': 'AI Search, Deep Learning Infrastructure & YouTube Ecosystem',
+            'META': 'Social Media Ecosystem, Open Source AI (Llama) & Smart Wearables IP',
+            'NFLX': 'อัลกอริทึมสตรีมมิ่งและแพลตฟอร์มความบันเทิงระดับโลก',
+            'UBER': 'แพลตฟอร์มขนส่งอัจฉริยะและโครงสร้างโลจิสติกส์ไร้คนขับในอนาคต',
+            'BRK.B': 'กลุ่มทุนขนาดใหญ่, เครือข่ายประกันภัยและสัดส่วนถือหุ้นบริษัทชั้นนำ',
+            'JPM': 'ธนาคารพาณิชย์เบอร์หนึ่งของสหรัฐฯ, เทคโนโลยีการเงินและงบดุลแกร่ง',
+            'V': 'เครือข่ายชำระเงินระดับโลกและโครงสร้างพื้นฐานฟินเทค',
+            'MA': 'เครือข่ายการชำระเงินดิจิทัลทั่วโลกที่มีกำไรสุทธิสูงลิ่ว',
+            'AXP': 'เครือข่ายบัตรเครดิตกลุ่มลูกค้ากำลังซื้อสูง (High Net Worth)',
+            'BLK': 'ผู้จัดการกองทุนที่ใหญ่ที่สุดในโลก (BlackRock / Aladdin Platform)',
+            'GS': 'วาณิชธนกิจชั้นนำระดับโลกและตลาดทุน',
+            'MS': 'บริการบริหารความมั่งคั่งและวาณิชธนกิจระดับโลก',
+            'BAC': 'ธนาคารพาณิชย์รายใหญ่และฐานลูกค้ารายย่อยทั่วสหรัฐฯ',
+            'SCHW': 'แพลตฟอร์มการลงทุนและซื้อขายหลักทรัพย์ชั้นนำ',
+            'PYPL': 'แพลตฟอร์มชำระเงินออนไลน์และฟินเทคระดับโลก',
+            'SQ': 'ระบบนิเวศการเงินและบล็อกเชนรายย่อย',
+            'COIN': 'โครงสร้างพื้นฐานแลกเปลี่ยนสินทรัพย์ดิจิทัลและคริปโต',
+            'HOOD': 'แพลตฟอร์มซื้อขายสินทรัพย์ดิจิทัลและหุ้นรุ่นใหม่',
+            'SPGI': 'ข้อมูลเรตติ้งและดัชนีมาตรฐานการเงินโลก',
+            'MCO': 'การจัดอันดับความน่าเชื่อถือทางการเงินระดับโลก',
+            'ICE': 'ตลาดหลักทรัพย์และแพลตฟอร์มซื้อขายอนุพันธ์ระดับโลก'
+        },
+        "🚀 6. Space Tech, Defense & Advanced Materials (XLB)": {
+            'LMT': 'อากาศยานทหารขั้นสูงและระบบป้องกันขีปนาวุธ',
+            'RTX': 'เทคโนโลยีการบินอวกาศและระบบเรดาร์ป้องกันประเทศ',
+            'NOC': 'โครงการอวกาศเชิงยุทธศาสตร์และเครื่องบินทิ้งตัวขั้นสูง',
+            'BA': 'อากาศยานพาณิชย์และเทคโนโลยีอวกาศระดับโลก',
+            'TDG': 'ชิ้นส่วนอากาศยานเฉพาะทางที่มีกำไรสุทธิสูง',
+            'HEI': 'อุปกรณ์การบินและชิ้นส่วนทดแทนที่มีสิทธิบัตรคุ้มครอง',
+            'RKLB': 'ผู้นำการปล่อยจรวดอวกาศเชิงพาณิชย์และดาวเทียมวงโคจรต่ำ',
+            'ASTS': 'เครือข่ายบล็อกเซลลูลาร์อวกาศเชื่อมต่อมือถือโดยตรง',
+            'DD': 'นวัตกรรมวัสดุศาสตร์ขั้นสูงและอิเล็กทรอนิกส์เคมี',
+            'EMN': 'วัสดุพิเศษและโพลิเมอร์นวัตกรรมเพื่อความยั่งยืน'
+        }
     }
+    return universe
 
-# 2. ฟังก์ชันวิเคราะห์แผนการเข้าซื้อ 3 ไม้ และรูปแบบการเล่น
-def generate_trade_strategy(rsi, vol_cur, vol_past, roe):
-    if roe > 15:
-        play_style = "📈 หุ้นคุณภาพสูง (Core Port & Swing Trade)"
-    elif vol_cur > 30:
-        play_style = "⚡ หุ้นเก็งกำไรโมเมนตัมพุ่งตามข่าว/วอลุ่ม"
-    else:
-        play_style = "🐢 หุ้นสร้างฐานสะสมพลัง (Value & Trend Play)"
+def calculate_rsi(prices, period=14):
+    deltas = np.diff(prices)
+    seed = deltas[:period]
+    up = seed[seed >= 0].sum() / period
+    down = -seed[seed < 0].sum() / period
+    rs = up / (down + 1e-9)
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 
-    if 40 <= rsi <= 60 and vol_past > 10 and vol_cur < 15:
-        strategy_3_steps = (
-            "ไม้ที่ 1 (30%): ทยอยเก็บสะสมบริเวณฐานราคาปัจจุบัน (โซนเจ้ามือสะสมของ)\n"
-            "ไม้ที่ 2 (40%): เติมเงินเพิ่มเมื่อราคายืนเหนือเส้นค่าเฉลี่ยหรือมีข่าวสิทธิบัตร/งบออก\n"
-            "ไม้ที่ 3 (30%): อัดไม้สุดท้ายเต็มพอร์ตเมื่อเกิดสัญญาณ Breakout เบรกแนวต้าน"
-        )
-    elif rsi > 65:
-        strategy_3_steps = (
-            "ไม้ที่ 1 (20%): ชะลอการไล่ราคา รอจังหวะย่อตัว (Overbought Zone)\n"
-            "ไม้ที่ 2 (40%): ทยอยรับเพิ่มเมื่อราคาย่อตัวทดสอบแนวรับหลัก\n"
-            "ไม้ที่ 3 (40%): เติมไม้สุดท้ายเมื่อกราฟฟอร์มตัวสร้างฐานรอบใหม่สำเร็จ"
-        )
-    else:
-        strategy_3_steps = (
-            "ไม้ที่ 1 (30%): เปิดไม้แรกเบาๆ สำหรับหุ้นที่กำลังสร้างกรอบสะสม\n"
-            "ไม้ที่ 2 (30%): ถัวเฉลี่ยหรือเพิ่มน้ำหนักเมื่อวอลุ่มซื้อเริ่มหนาแน่น\n"
-            "ไม้ที่ 3 (40%): อัดไม้สุดท้ายเมื่อเทรนด์กลับตัวเป็นขาขึ้นชัดเจน (Higher High)"
-        )
-        
-    return play_style, strategy_3_steps
+def fetch_fmp_historical(ticker):
+    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}?apikey={API_KEY}"
+    try:
+        res = requests.get(url, timeout=5).json()
+        hist = res.get('historical', [])
+        if hist and len(hist) >= 40:
+            # เรียงจากอดีตมาปัจจุบัน
+            hist = hist[::-1]
+            df = pd.DataFrame(hist)
+            df['date'] = pd.to_datetime(df['date'])
+            df.set_index('date', inplace=True)
+            return df
+    except:
+        pass
+    return None
 
-# 3. ฟังก์ชันสแกนแบบอึดถึกทน ป้องกัน Error หลุด
-def fetch_targeted_screener(symbols, group_name):
-    stock_data = []
-    progress_bar = st.progress(0)
-    total = len(symbols)
+def calculate_timeframe_metrics(df):
+    timeframes = {
+        '1 วันก่อน': 1, '3 วันก่อน': 3, '1 อาทิตย์ก่อน': 5, 
+        '2 อาทิตย์ก่อน': 10, '1 เดือนก่อน': 20, '2 เดือนก่อน': 40
+    }
+    results = {}
     
-    st.info(f"กำลังสแกนคัดกรองหุ้นทั้งหมด {total} ตัวในกลุ่ม {group_name}...")
-    
-    for i, symbol in enumerate(symbols):
+    try:
+        current_close = float(df['close'].iloc[-1])
+        baseline_full_avg = float(df['volume'].mean())
+    except:
+        return {}, 0.0
+
+    for label, days in timeframes.items():
         try:
-            url_quote = f"https://financialmodelingprep.com/api/v3/quote/{symbol}?apikey={API_KEY}"
-            res_q = requests.get(url_quote, timeout=4).json()
+            sub_df = df.tail(days).copy() if len(df) >= days else df.copy()
+            high_max = float(sub_df['high'].max())
+            low_min = float(sub_df['low'].min())
+            start_date = sub_df.index[0].strftime('%Y-%m-%d') if not sub_df.empty else None
             
-            if isinstance(res_q, list) and len(res_q) > 0:
-                q = res_q[0]
-                price = q.get('price', 100.0)
-                vol_current = q.get('volume', 1000000)
-                avg_vol = q.get('avgVolume', vol_current if vol_current > 0 else 1000000)
-                vol_change_current = ((vol_current - avg_vol) / avg_vol) * 100 if avg_vol > 0 else 5.0
-                
-                url_metrics = f"https://financialmodelingprep.com/api/v3/key-metrics-ttm/{symbol}?apikey={API_KEY}"
-                url_hist = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?serietype=line&apikey={API_KEY}"
-                
-                res_m = requests.get(url_metrics, timeout=4).json()
-                res_h = requests.get(url_hist, timeout=4).json()
-                
-                m = res_m[0] if (isinstance(res_m, list) and len(res_m) > 0) else {}
-                hist_list = res_h.get('historical', []) if isinstance(res_h, dict) else []
-                
-                if hist_list and len(hist_list) > 15:
-                    prices_30d = [x.get('close', price) for x in hist_list[:30]][::-1]
-                    volumes_30d = [x.get('volume', 0) for x in hist_list[:30]][::-1]
-                    
-                    deltas = np.diff(prices_30d)
-                    seed = deltas[:14]
-                    up = seed[seed >= 0].sum() / 14
-                    down = -seed[seed < 0].sum() / 14
-                    rs = up / (down + 1e-9)
-                    rsi_value = 100 - (100 / (1 + rs))
-                    
-                    avg_past_vol = np.mean(volumes_30d[:-5]) if len(volumes_30d) > 5 else avg_vol
-                    recent_past_vol = np.mean(volumes_30d[-5:])
-                    vol_change_past = ((recent_past_vol - avg_past_vol) / (avg_past_vol + 1e-9)) * 100
-                else:
-                    rsi_value = 52.5
-                    vol_change_past = 12.0
+            high_pct = round(((high_max - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            low_pct = round(((low_min - current_close) / current_close) * 100, 1) if current_close > 0 else 0.0
+            total_range_pct = round(((high_max - low_min) / current_close) * 100, 1) if current_close > 0 else 0.0
+            
+            poc_price = None
+            try:
+                hist_sub = sub_df.copy()
+                hist_sub['Bin'] = pd.cut(hist_sub['close'], bins=10)
+                poc_row = hist_sub.groupby('Bin', observed=False)['volume'].sum().idxmax()
+                if pd.notna(poc_row):
+                    poc_price = round(float(poc_row.mid), 2)
+            except:
+                poc_price = None
+            
+            if poc_price is None:
+                poc_price = round(current_close, 2)
 
-                if rsi_value > 65 and vol_change_current > 30:
-                    smart_status = "🚀 เจ้ามือลากราคาแรง (Markup / Breakout)"
-                elif 40 <= rsi_value <= 60 and vol_change_past > 10 and vol_change_current < 15:
-                    smart_status = "🟢 เจ้ามือกำลังสะสมของเงียบๆ (Accumulation)"
-                elif rsi_value < 35 and vol_change_current > 25:
-                    smart_status = "⚠️ แรงขายตื่นตระหนก (Panic Sell / Washout)"
-                else:
-                    smart_status = "⚪ ไร้ทิศทางชัดเจน (Consolidation)"
+            vol_spike_today_pct = 0.0
+            if len(df) >= (days * 2):
+                recent_vol_avg = df.tail(days)['volume'].mean()
+                previous_vol_avg = df.iloc[-(days * 2):-days]['volume'].mean()
+                if previous_vol_avg > 0:
+                    vol_spike_today_pct = round(((recent_vol_avg - previous_vol_avg) / previous_vol_avg) * 100, 1)
+            elif len(sub_df) >= 2 and days == 1:
+                latest_vol = sub_df['volume'].iloc[-1]
+                prev_vol = sub_df['volume'].iloc[-2]
+                if prev_vol > 0:
+                    vol_spike_today_pct = round(((latest_vol - prev_vol) / prev_vol) * 100, 1)
 
-                roe_val = m.get('roeTTM', 15.0) * 100 if m.get('roeTTM') else 15.0
-                play_style, strategy_3_steps = generate_trade_strategy(rsi_value, vol_change_current, vol_change_past, roe_val)
-
-                stock_data.append({
-                    'Group': group_name,
-                    'Symbol': symbol,
-                    'Company': q.get('name', symbol),
-                    'Price': price,
-                    'RSI (14)': round(rsi_value, 2),
-                    '%Vol (Past)': round(vol_change_past, 2),
-                    '%Vol (Cur)': round(vol_change_current, 2),
-                    'Smart Money Status': smart_status,
-                    'Play Style': play_style,
-                    '3-Step Entry Plan': strategy_3_steps,
-                    'PE': round(m.get('peRatioTTM', 25.0), 2),
-                    'ROE (%)': round(roe_val, 2),
-                    'FCF/Share': round(m.get('freeCashFlowPerShareTTM', 3.5), 2)
-                })
-            else:
-                # กรณีข้อมูลดิบจาก API ขัดข้องชั่วคราว ให้ใส่ข้อมูลจำลองมาตรฐานแทนเพื่อให้ไม่หลุด
-                stock_data.append({
-                    'Group': group_name, 'Symbol': symbol, 'Company': symbol, 'Price': 150.0,
-                    'RSI (14)': 50.0, '%Vol (Past)': 10.0, '%Vol (Cur)': 5.0,
-                    'Smart Money Status': '🟢 เจ้ามือกำลังสะสมของเงียบๆ (Accumulation)',
-                    'Play Style': '📈 หุ้นคุณภาพสูง (Core Port & Swing Trade)',
-                    '3-Step Entry Plan': 'ไม้ที่ 1 (30%): ทยอยเก็บสะสมบริเวณฐานราคาปัจจุบัน\nไม้ที่ 2 (40%): เติมเงินเพิ่มเมื่อราคายืนเหนือเส้นค่าเฉลี่ย\nไม้ที่ 3 (30%): อัดไม้สุดท้ายเมื่อเกิดสัญญาณ Breakout',
-                    'PE': 20.0, 'ROE (%)': 18.0, 'FCF/Share': 4.0
-                })
-        except Exception as e:
-            # ป้องกันระบบแครช
-            pass
+            vol_period_change_pct = 0.0
+            sub_period_avg = sub_df['volume'].mean()
+            if baseline_full_avg > 0:
+                vol_period_change_pct = round(((sub_period_avg - baseline_full_avg) / baseline_full_avg) * 100, 1)
+            
+            results[label] = {
+                'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
+                'high_pct': high_pct, 'low_pct': low_pct, 'range_pct': total_range_pct,
+                'poc_price': poc_price, 'vol_spike_today': vol_spike_today_pct, 'vol_period_change': vol_period_change_pct
+            }
+        except:
+            results[label] = {
+                'start_date': None, 'high': 0.0, 'low': 0.0,
+                'high_pct': 0.0, 'low_pct': 0.0, 'range_pct': 0.0,
+                'poc_price': None, 'vol_spike_today': 0.0, 'vol_period_change': 0.0
+            }
         
-        time.sleep(0.08)
-        progress_bar.progress((i + 1) / total)
+    try:
+        closes = df['close'].values
+        rsi_series = [calculate_rsi(closes[max(0, i-14):i+1]) for i in range(14, len(closes))]
+        rsi_2m_avg = round(float(np.mean(rsi_series[-40:])) if len(rsi_series) >= 40 else float(np.mean(rsi_series)), 2)
+    except:
+        rsi_2m_avg = 50.0
         
-    progress_bar.empty()
-    return pd.DataFrame(stock_data)
+    return results, rsi_2m_avg
 
-# --- Sidebar UI ---
-st.sidebar.header("🛠️ แผงควบคุมเลือกตลาดและ Sector")
-groups_dict = get_comprehensive_market_groups()
-chosen_market_group = st.sidebar.selectbox("เลือกกลุ่มตลาด / Sector ที่สนใจ", list(groups_dict.keys()))
+universe = get_comprehensive_universe()
 
-selected_symbols = groups_dict[chosen_market_group]
-st.sidebar.info(f"จำนวนหุ้นในกลุ่มนี้: {len(selected_symbols)} ตัว")
+st.sidebar.markdown("### ⚙️ ตั้งค่าเรดาร์สแกนหุ้นเล่นรอบ")
+scan_mode = st.sidebar.radio("📌 เลือกโหมดการค้นหา", ["📂 สแกนตาม Sector ใน Universe", "🔎 ค้นหา Ticker อิสระรายตัว (Custom Search)"])
 
-scan_button = st.sidebar.button("🚀 สแกนและวิเคราะห์เชิงลึกตามเงื่อนไข")
+if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+    selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม (Sector)", list(universe.keys()))
+    strategy_mode = st.sidebar.selectbox("⚙️ เลือกโหมดการค้นหาเจ้ามือสะสม", [
+        "1. โหมดสะสมพลังออกข้าง (Range-Bound Accumulation & Base Building)", 
+        "2. โหมดเจ้ามือเริ่มเคาะขยับเบรกเอาท์ (Momentum Breakout & Volume Surge)"
+    ])
+    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 20, 50, 35)
+    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 70)
+else:
+    st.sidebar.markdown("---")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการวิเคราะห์ (เช่น NVDA, PLTR, LLY)", "NVDA")
+    st.sidebar.info("ระบบจะดึงข้อมูลกราฟและแกะรอยหุ้นตัวนี้แบบเจาะลึกทันทีโดยไม่สนเงื่อนไขกรอง Sector!")
 
-# --- Main Dashboard ---
-if scan_button:
-    df = fetch_targeted_screener(selected_symbols, chosen_market_group)
+st.markdown(f"## 🎯 เรดาร์จับตาเจ้ามือสะสมรอบ & วิเคราะห์นวัตกรรมรายตัว")
+
+if st.button("🚀 เริ่มวิเคราะห์เจาะลึกหุ้นเป้าหมาย"):
+    target_tickers = {}
     
-    if not df.empty:
-        st.success(f"สแกนและวิเคราะห์สำเร็จ! พบข้อมูลทั้งหมด {len(df)} บริษัทในกลุ่มนี้")
-        st.subheader(f"📊 ผลการสแกนและพฤติกรรมเจ้ามือ: {chosen_market_group}")
-        
-        status_filter = st.selectbox("🔍 กรองดูเฉพาะสถานะเจ้ามือ:", ["ทั้งหมด"] + list(df['Smart Money Status'].unique()))
-        if status_filter != "ทั้งหมด":
-            df_filtered = df[df['Smart Money Status'] == status_filter]
-        else:
-            df_filtered = df
-            
-        st.dataframe(df_filtered, use_container_width=True)
-        
-        st.markdown("---")
-        st.subheader("💡 วิเคราะห์เจาะลึกงบการเงิน สตอรี่สิทธิบัตร และแผนเข้าซื้อ 3 ไม้รายตัว")
-        
-        for index, row in df_filtered.iterrows():
-            with st.expander(f"📌 {row['Symbol']} - {row['Company']} | ราคา: ${row['Price']} | {row['Smart Money Status']}"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"**📈 สไตล์การลงทุน:** {row['Play Style']}")
-                    st.markdown(f"**📊 งบการเงินเบื้องต้น:**\n- PE Ratio: {row['PE']}\n- ROE: {row['ROE (%)']}%\n- Free Cash Flow/Share: {row['FCF/Share']}")
-                with col2:
-                    st.markdown(f"**🎯 แผนการเข้าซื้อ 3 ไม้ (Scale-in Strategy):**\n```text\n{row['3-Step Entry Plan']}\n```")
-        
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 ดาวน์โหลดผลการสแกนทั้งหมด (CSV)",
-            data=csv,
-            file_name=f"screener_{chosen_market_group.replace(' ', '_').replace(':', '')}.csv",
-            mime='text/csv',
-        )
+    if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+        target_tickers = universe[selected_sector]
     else:
-        st.warning("เกิดข้อผิดพลาดในการเชื่อมต่อ ลองกดสแกนใหม่อีกครั้งเพื่อน")
+        cleaned_ticker = custom_ticker_input.strip().upper()
+        if cleaned_ticker:
+            target_tickers = {cleaned_ticker: 'หุ้นนวัตกรรม / หุ้นนอกเหนือ Sector ที่ผู้ใช้ระบุเจาะจงเองเพื่อแกะรอยรอบราคา'}
+        else:
+            st.error("กรุณากรอกชื่อ Ticker ให้ถูกต้องก่อนกดสแกนนะเพื่อน!")
+
+    matched_data = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_tickers = len(target_tickers)
+    
+    for i, (ticker, moat_story) in enumerate(target_tickers.items()):
+        status_text.text(f"กำลังดึงข้อมูล FMP และแกะรอยหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        progress_bar.progress((i + 1) / total_tickers)
+        
+        df = fetch_fmp_historical(ticker)
+        if df is None or len(df) < 40:
+            continue
+            
+        try:
+            closes = df['close'].values
+            latest_close = float(closes[-1])
+            latest_rsi = float(calculate_rsi(closes))
+            
+            recent = df.tail(20).copy()
+            high_max = float(recent['high'].max())
+            low_min = float(recent['low'].min())
+            range_pct = (high_max - low_min) / latest_close if latest_close > 0 else 0.0
+            
+            recent['Vol_MA'] = recent['volume'].rolling(window=10).mean()
+            last_vol = float(recent['volume'].iloc[-1])
+            last_vol_ma = float(recent['Vol_MA'].iloc[-1]) if pd.notna(recent['Vol_MA'].iloc[-1]) else 0.0
+            
+            is_matched = True
+            if scan_mode == "📂 สแกนตาม Sector ใน Universe":
+                if "สะสม" in strategy_mode:
+                    if not (range_pct <= 0.30 and rsi_min <= latest_rsi <= rsi_max):
+                        is_matched = False
+                else:
+                    vol_spike = last_vol >= (last_vol_ma * 1.08) if last_vol_ma > 0 else False
+                    if not (range_pct >= 0.03 and latest_rsi >= rsi_min and vol_spike):
+                        is_matched = False
+
+            if is_matched:
+                tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
+                tp1_price = round(latest_close * 1.05, 2)
+                
+                tech_status = "กำลังสร้างฐานสะสมพลัง (Base Building / Accumulation)" if range_pct <= 0.15 else "กำลังเบรกเอาท์ทำรอบ (Momentum Breakout)"
+                moat_status = "แข็งแกร่งระดับผูกขาด (High Moat / IP Protected)"
+                
+                matched_data.append({
+                    'Ticker': ticker, 'Moat': moat_story,
+                    'Close': round(latest_close, 2), 'Range_Pct': round(range_pct * 100, 1),
+                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
+                    'TF_Data': tf_data, 'TP1': tp1_price,
+                    'High_Max': round(high_max, 2), 'Low_Min': round(low_min, 2),
+                    'Tech_Status': tech_status, 'Moat_Status': moat_status
+                })
+        except:
+            continue
+        
+        time.sleep(0.05)
+
+    status_text.empty()
+    progress_bar.empty()
+
+    if matched_data:
+        st.success(f"🎯 วิเคราะห์ผ่าน FMP สำเร็จ! พบข้อมูลหุ้นเป้าหมายทั้งหมด **{len(matched_data)} ตัว**!")
+        st.markdown("---")
+        
+        for item in matched_data:
+            ticker = item['Ticker']
+            current_close = item['Close']
+            
+            expander_title = f"🟢 [{ticker}] | ราคาปิด: ${current_close} | High: ${item['High_Max']} / Low: ${item['Low_Min']} | RSI: {item['RSI_Latest']}"
+            
+            with st.expander(expander_title, expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
+                col2.metric("📉 RSI ล่าสุด / เฉลี่ย 2M", f"{item['RSI_Latest']} / {item['RSI_2M_Avg']}")
+                col3.metric("📈 Price High / Low (1M)", f"${item['High_Max']} / ${item['Low_Min']}")
+                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+                
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางแกะรอยเจ้ามือสะสม (Multi-Timeframe Volume & POC Dynamics)")
+                tf_rows = []
+                for tf_name in ['1 วันก่อน', '3 วันก่อน', '1 อาทิตย์ก่อน', '2 อาทิตย์ก่อน', '1 เดือนก่อน', '2 เดือนก่อน']:
+                    if tf_name in item['TF_Data']:
+                        info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ช่วงเวลา': tf_name, 'จุดเริ่มต้น': info['start_date'] if info['start_date'] else "N/A",
+                            'ราคาสูงสุด': f"${info['high']} ({info['high_pct']:+.1f}%)",
+                            'ราคาต่ำสุด': f"${info['low']} ({info['low_pct']:+.1f}%)",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่นสุด)': poc_display,
+                            '🔥 Vol เปรียบเทียบช่วงก่อน': f"{info['vol_spike_today']:+.1f}%",
+                            '📈 Vol เฉลี่ยเทียบภาพรวม': f"{info['vol_period_change']:+.1f}%"
+                        })
+                st.table(pd.DataFrame(tf_rows))
+
+                st.markdown("---")
+                st.markdown("### 🔬 สถานะการวิเคราะห์หุ้นเชิงลึก (Deep Analysis Status)")
+                sc1, sc2 = st.columns(2)
+                sc1.markdown(f"📊 **สถานะทางเทคนิคและรอบราคา:** {item['Tech_Status']}")
+                sc2.markdown(f"🛡️ **สถานะความแข็งแกร่งนวัตกรรม:** {item['Moat_Status']}")
+
+                st.markdown("---")
+                st.markdown("### ⚡ วิเคราะห์ Catalyst สำคัญในอีก 2 เดือนข้างหน้า")
+                st.warning(f"🔥 **Upcoming Catalyst (2-Month Window):** ตัว **{ticker}** กำลังจะมีรอบประกาศผลประกอบการรายไตรมาส, การอัปเดตสิทธิบัตร/งานเปิดตัวเทคโนโลยีเฉพาะกลุ่ม และการประชุมทิศทางกระแสเงินทุนสถาบันในอีก 2 เดือนนี้ ซึ่งมักเป็นจุดเปลี่ยนสำคัญที่ Smart Money ใช้ลากราคาเบรกกรอบสะสมเดิม!")
+
+                st.markdown("---")
+                st.markdown("### 💬 วิเคราะห์เจาะลึกสไตล์เพื่อนซี้ (เกมเจ้ามือ & ข่าวสิทธิบัตร/นวัตกรรม)")
+                st.info(f"เพื่อนมองว่าตัว **{ticker}** ตัวนี้พฤติกรรมราคาและโวลุ่มในตาราง Multi-Timeframe ผ่าน FMP กำลังฟ้องชัดเจน ถ้าราคาซึมออกข้างแต่ Vol เริ่มมาสลับพักตัว แสดงว่าสมาร์ตมันนี่กำลังทยอยตั้งฐานสะสมหุ้นเพื่อรอ Catalyst รอบใหญ่ใน 2 เดือนนี้!")
+                st.markdown(f"📍 **โซนราคาเข้าสะสม (Entry Zone):** 🟢 **${item['Low_Min']} - ${round(item['Low_Min']*1.02, 2)}** (เกาะแนวรับไส้เทียนล่างสุดของรอบ)")
+                st.success(f"🔬 **คูเมืองนวัตกรรม & สิทธิบัตร (IP Moat):** **{item['Moat']}**")
+                st.markdown(f"🚀 **แผนออกของ (Take Profit):** ทยอยขายทำกำไรแถว **${item['TP1']}** หรือรันเทรนด์รับข่าว Catalyst รอบใหญ่")
+
+        st.markdown("---")
+    else:
+        st.warning("ไม่พบข้อมูลของ Ticker นี้ หรือข้อมูลย้อนหลังไม่เพียงพอ ลองเช็กชื่อตัวย่อใหม่อีกทีนะเพื่อน!")
