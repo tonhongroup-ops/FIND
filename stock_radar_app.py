@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร (เพิ่มช่องวันประกาศงบรอบหน้าแบบ - ถ้ายัังไม่ประกาศ)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร (ระบบสมบูรณ์ พร้อมช่องวันประกาศงบแบบคลีนๆ)")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -205,7 +205,7 @@ def get_smart_fundamental_and_patent_insight(ticker):
 
 universe = get_massive_universe_with_set100()
 
-st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน (ปรับความยืดหยุ่น)")
+st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน")
 scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
     "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)", 
     "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
@@ -333,7 +333,7 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
 
     if matched_data:
         matched_data = sorted(matched_data, key=lambda x: x['Vol_Change_3D'], reverse=True)
-        st.success(f"🎯 สแกนสำเร็จ! คัดเจอหุ้นที่ตรงตามเงื่อนไขยืดหยุ่นทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 สแกนสำเร็จ! คัดเจอหุ้นที่ตรงตามเงื่อนไขทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
@@ -350,7 +350,6 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 col4.metric("📅 ประกาศงบรอบหน้า", f"{item['Next_Earnings']}")
                 
                 st.markdown("---")
-                # บล็อกสรุปข่าวสารด่วนและลิงก์แกะรอย
                 clean_t = ticker.replace('.BK', '')
                 yahoo_news_url = f"https://finance.yahoo.com/quote/{ticker}/news/"
                 investing_url = f"https://www.investing.com/search/?q={clean_t}"
@@ -365,9 +364,10 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 st.markdown("---")
                 st.markdown("### 🧠 มุมมองวิเคราะห์เชิงลึกจากเพื่อน (งบการเงิน, สิทธิบัตร & เกมเจ้ามือ Smart Money)")
                 st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **วิเคราะห์พฤติกรรมราคา:** {item['Swing_Reason']}")
-                
                 st.success(f"🧬 **แกะรอยสิทธิบัตร & นวัตกรรม:** {item['Patent_Theme']}\n\n📊 **วิเคราะห์งบการเงิน & ความแข็งแกร่ง:** {item['Fundamental_Review']}")
 
                 st.markdown("---")
                 st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
-                tf_rows =
+                tf_rows = []
+                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
+   
