@@ -2,11 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from datetime import datetime
 
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร (พร้อมคำนวณฐาน POC และจุด Stop Loss อัตโนมัติ)")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตร (เพิ่มช่องวันประกาศงบรอบหน้าแบบ - ถ้ายัังไม่ประกาศ)")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -48,6 +49,32 @@ def get_massive_universe_with_set100():
         ]
     }
     return universe
+
+def get_next_earnings_date(ticker):
+    try:
+        tk = yf.Ticker(ticker)
+        cal = tk.calendar
+        earnings_date = None
+        if cal is not None and isinstance(cal, dict) and 'Earnings Date' in cal:
+            dates = cal['Earnings Date']
+            if len(dates) > 0:
+                earnings_date = pd.to_datetime(dates[0]).date()
+        elif cal is not None and isinstance(cal, pd.DataFrame) and not cal.empty:
+            if 'Earnings Date' in cal.columns:
+                earnings_date = pd.to_datetime(cal['Earnings Date'].iloc[0]).date()
+        
+        if earnings_date is None:
+            return "-"
+            
+        today = datetime.now().date()
+        days_left = (earnings_date - today).days
+        
+        if days_left < 0:
+            return f"{earnings_date.strftime('%Y-%m-%d')} (ผ่านไปแล้ว)"
+        else:
+            return f"{earnings_date.strftime('%Y-%m-%d')} (อีก {days_left} วัน)"
+    except:
+        return "-"
 
 def calculate_timeframe_metrics(df):
     timeframe_days = {
@@ -140,23 +167,41 @@ def calculate_rsi(series, period=14):
 def get_smart_fundamental_and_patent_insight(ticker):
     ticker_upper = ticker.upper()
     if 'NVDA' in ticker_upper:
-        return ("AI Computing & GPU Architecture Patents", 
-                "ผู้นำตลาดชิป AI ผูกขาดสิทธิบัตรสถาปัตยกรรม CUDA และ Blackwell อัตรากำไรขั้นต้น (Gross Margin) สูงระดับ 75%+ งบการเงินแข็งแกร่งระดับเงินสดล้นมือ เจ้ามือสถาบันคุมเกมสะสมรอบใหญ่รอรับดีมานด์ดาต้าเซ็นเตอร์ทั่วโลก")
+        return (
+            "AI Computing & GPU Architecture Patents", 
+            "ผู้นำตลาดชิป AI ผูกขาดสิทธิบัตรสถาปัตยกรรม CUDA และ Blackwell อัตรากำไรขั้นต้น (Gross Margin) สูงระดับ 75%+ งบการเงินแข็งแกร่งระดับเงินสดล้นมือ เจ้ามือสถาบันคุมเกมสะสมรอบใหญ่รอรับดีมานด์ดาต้าเซ็นเตอร์ทั่วโลก",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** ตลาดกำลังจับตาการส่งมอบชิปล็อตใหญ่ Blackwell และสิทธิบัตรระบบระบายความร้อน Liquid Cooling ที่แก้ปัญหาคอขวด Data Center"
+        )
     elif 'AAPL' in ticker_upper:
-        return ("Consumer Electronics & Ecosystem Patents", 
-                "เจ้าพ่ออีโคซิสเต็มและสิทธิบัตรดีไซน์ฮาร์ดแวร์ กระแสเงินสดอิสระ (FCF) มหาศาล งบดุลป้อมปราการเหล็ก หุ้น Defensive ชั้นดีที่รอจังหวะ Smart Money เก็บของสะสมเพื่อรับรอบเปิดตัวนวัตกรรมใหม่ๆ")
+        return (
+            "Consumer Electronics & Ecosystem Patents", 
+            "เจ้าพ่ออีโคซิสเต็มและสิทธิบัตรดีไซน์ฮาร์ดแวร์ กระแสเงินสดอิสระ (FCF) มหาศาล งบดุลป้อมปราการเหล็ก หุ้น Defensive ชั้นดีที่รอจังหวะ Smart Money เก็บของสะสมเพื่อรับรอบเปิดตัวนวัตกรรมใหม่ๆ",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** อัปเดตข่าวคราวการพัฒนาซอฟต์แวร์ AI และรอบการเปิดตัวฮาร์ดแวร์รุ่นใหม่ที่จดสิทธิบัตรดีไซน์หน้าจอพับและวัสดุน้ำหนักเบา"
+        )
     elif 'TSLA' in ticker_upper:
-        return ("EV, Autonomous Driving & Energy Patents", 
-                "เจ้าแห่งนวัตกรรมยานยนต์ไฟฟ้าและซอฟต์แวร์ FSD (Full Self-Driving) รวมถึงสิทธิบัตรระบบกักเก็บพลังงาน Megapack เกมราคาผันผวนสูง เจ้ามักเขย่าแรงเพื่อสลัดเม่าก่อนลากจริงตามความคืบหน้าของเทคโนโลยี Robotaxi")
+        return (
+            "EV, Autonomous Driving & Energy Patents", 
+            "เจ้าแห่งนวัตกรรมยานยนต์ไฟฟ้าและซอฟต์แวร์ FSD (Full Self-Driving) รวมถึงสิทธิบัตรระบบกักเก็บพลังงาน Megapack เกมราคาผันผวนสูง เจ้ามักเขย่าแรงเพื่อสลัดเม่าก่อนลากจริงตามความคืบหน้าของเทคโนโลยี Robotaxi",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** ความคืบหน้าการขออนุมัติระบบ FSD Unsupervised ในหลายรัฐ และสิทธิบัตร AI Vision-Only ที่ทิ้งห่างคู่แข่ง"
+        )
     elif 'ISRG' in ticker_upper:
-        return ("Medical Robotics & Surgical Patents", 
-                "ผู้นำหุ่นยนต์ผ่าตัด da Vinci ผูกขาดสิทธิบัตรทางการแพทย์ระดับโลก รายได้เติบโตสม่ำเสมอจากโมเดลธุรกิจแบบ Recurring (ขายเครื่องพร้อมขายอุปกรณ์ใช้แล้วทิ้งรายครั้ง) กองทุนใหญ่ชอบสะสมเงียบๆ")
+        return (
+            "Medical Robotics & Surgical Patents", 
+            "ผู้นำหุ่นยนต์ผ่าตัด da Vinci ผูกขาดสิทธิบัตรทางการแพทย์ระดับโลก รายได้เติบโตสม่ำเสมอจากโมเดลธุรกิจแบบ Recurring (ขายเครื่องพร้อมขายอุปกรณ์ใช้แล้วทิ้งรายครั้ง) กองทุนใหญ่ชอบสะสมเงียบๆ",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** ดีมานด์การใช้หุ่นยนต์ผ่าตัด da Vinci 5 พุ่งสูงขึ้นในโรงพยาบาลชั้นนำทั่วโลก หนุนรายได้ค่าอุปกรณ์ใช้แล้วทิ้งเติบโตต่อเนื่อง"
+        )
     elif 'DELTA.BK' in ticker_upper:
-        return ("Power Electronics & Data Center Components", 
-                "หุ้นไฮไลท์นวัตกรรมอิเล็กทรอนิกส์ไทย สิทธิบัตรระบบจัดการพลังงานสำหรับ Data Center AI ระดับโลก งบการเงินโตเร่งตามกระแสเทคโนโลยี AI Global Supply Chain เจ้ามือไทยคุมโซนราคาแน่นหนา")
+        return (
+            "Power Electronics & Data Center Components", 
+            "หุ้นไฮไลท์นวัตกรรมอิเล็กทรอนิกส์ไทย สิทธิบัตรระบบจัดการพลังงานสำหรับ Data Center AI ระดับโลก งบการเงินโตเร่งตามกระแสเทคโนโลยี AI Global Supply Chain เจ้ามือไทยคุมโซนราคาแน่นหนา",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** คำสั่งซื้อชิ้นส่วนพาวเวอร์ซัพพลายสำหรับ AI Server และ Data Center เติบโตตามดีมานด์ฝั่งอเมริกาและไต้หวัน"
+        )
     else:
-        return ("Global Tech & Innovation Moat", 
-                "บริษัทที่มีจุดแข็งด้านเทคโนโลยีหรือส่วนแบ่งการตลาดสูง งบการเงินอยู่ในเกณฑ์เสถียร เหมาะกับการใช้เรดาร์แกะรอยพฤติกรรม Smart Money เพื่อหาจังหวะเข้าทำกำไรระยะสั้นถึงกลางตามรอบงบการเงิน")
+        return (
+            "Global Tech & Innovation Moat", 
+            "บริษัทที่มีจุดแข็งด้านเทคโนโลยีหรือส่วนแบ่งการตลาดสูง งบการเงินอยู่ในเกณฑ์เสถียร เหมาะกับการใช้เรดาร์แกะรอยพฤติกรรม Smart Money เพื่อหาจังหวะเข้าทำกำไรระยะสั้นถึงกลางตามรอบงบการเงิน",
+            "🔥 **ข่าวสด & สตอรี่ล่าสุด:** ติดตามข่าวสารการยื่นจดสิทธิบัตรผลิตภัณฑ์ใหม่และการเติบโตของรายได้ในไตรมาสล่าสุดอย่างใกล้ชิด"
+        )
 
 universe = get_massive_universe_with_set100()
 
@@ -181,7 +226,7 @@ else:
     st.sidebar.markdown("---")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการ (เช่น NVDA, DELTA.BK, PTT.BK)", "NVDA")
 
-st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, สิทธิบัตรนวัตกรรม & จุดคำนวณ Stop Loss")
+st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
 
 if st.button("🚀 เริ่มรันระบบสแกน (ลุยกันเพื่อน!)"):
     target_tickers = []
@@ -229,10 +274,11 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
             poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
             poc_price = float(poc_row.mid) if pd.notna(poc_row) else latest_close
             
-            # คำนวณจุด Stop Loss และ Take Profit อัตโนมัติจากฐานราคา POC และ Low 30 วัน
             stop_loss_price = round(min(poc_price * 0.97, low_30 * 0.99), 2)
             tp1_price = round(latest_close * 1.05, 2)
             tp2_price = round(latest_close * 1.10, 2)
+            
+            next_earnings = get_next_earnings_date(ticker)
             
             vol_3d_current = float(df.tail(3)['Volume'].mean())
             vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
@@ -257,7 +303,7 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
-                patent_theme, fundamental_review = get_smart_fundamental_and_patent_insight(ticker)
+                patent_theme, fundamental_review, news_summary = get_smart_fundamental_and_patent_insight(ticker)
                 
                 if scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
                     stock_status = "🔥 SET100 Volume Active (วอลุ่มคึกคัก เงินเข้าสะพัด)"
@@ -274,9 +320,10 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
                     'TF_Data': tf_data, 'TP1': tp1_price, 'TP2': tp2_price,
                     'POC_Price': round(poc_price, 2), 'Stop_Loss': stop_loss_price,
-                    'Resistance_Price': round(high_30, 2),
+                    'Resistance_Price': round(high_30, 2), 'Next_Earnings': next_earnings,
                     'Stock_Status': stock_status, 'Swing_Reason': swing_reason,
-                    'Patent_Theme': patent_theme, 'Fundamental_Review': fundamental_review
+                    'Patent_Theme': patent_theme, 'Fundamental_Review': fundamental_review,
+                    'News_Summary': news_summary
                 })
         except:
             continue
@@ -300,7 +347,20 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
                 col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
                 col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
-                col4.metric("🎯 เป้าทำกำไร (TP1 +5%)", f"${item['TP1']}")
+                col4.metric("📅 ประกาศงบรอบหน้า", f"{item['Next_Earnings']}")
+                
+                st.markdown("---")
+                # บล็อกสรุปข่าวสารด่วนและลิงก์แกะรอย
+                clean_t = ticker.replace('.BK', '')
+                yahoo_news_url = f"https://finance.yahoo.com/quote/{ticker}/news/"
+                investing_url = f"https://www.investing.com/search/?q={clean_t}"
+                
+                st.markdown(f"### 📰 สรุปข่าวสารด่วน & แหล่งแกะรอยสตอรี่ [{ticker}]")
+                st.info(item['News_Summary'])
+                
+                col_n1, col_n2 = st.columns(2)
+                col_n1.link_button(f"🔗 ไปที่ Yahoo Finance News ({ticker})", yahoo_news_url)
+                col_n2.link_button(f"🔗 ค้นหาข่าวเชิงลึกใน Investing.com ({clean_t})", investing_url)
                 
                 st.markdown("---")
                 st.markdown("### 🧠 มุมมองวิเคราะห์เชิงลึกจากเพื่อน (งบการเงิน, สิทธิบัตร & เกมเจ้ามือ Smart Money)")
@@ -310,27 +370,4 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
 
                 st.markdown("---")
                 st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
-                tf_rows = []
-                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
-                    if tf_name in item['TF_Data']:
-                        info = item['TF_Data'][tf_name]
-                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
-                        tf_rows.append({
-                            'ไทม์เฟรม': tf_name, 
-                            'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
-                            'กรอบ (Range)': f"{info['range_pct']}%",
-                            'POC (ฐานราคาหนาแน่น)': poc_display,
-                            '📉 ค่าเฉลี่ย RSI': f"{info['tf_rsi_avg']}",
-                            '📊 Vol Change (ปัจจุบัน)': f"{info['vol_change_current']:+.1f}%",
-                            '📊 Vol Change (เทียบอดีต)': f"{info['vol_change_vs_past']:+.1f}%",
-                            '🔍 สรุปพฤติกรรมภาพรวม': info['market_behavior']
-                        })
-                st.table(pd.DataFrame(tf_rows))
-
-                st.markdown("---")
-                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้น **{ticker}** มีฐานราคาอยู่ที่ **${item['POC_Price']}** และตั้งจุดตัดขาดทุน (Stop Loss) ไว้ที่ **${item['Stop_Loss']}** หากราคาหลุดเส้นนี้ให้คัทลอสทันทีตามวินัย แล้วรอจังหวะข่าวดีรอบใหม่ค่อยกลับมาเก็บใหม่เพื่อน!")
-
-                st.markdown("---")
-    else:
-        st.warning("⚠️ ยังไม่พบข้อมูลในหมวดนี้ ลองสลับไปหมวด 'SET100 Volume Surge' หรือ 'ค้นหารายตัว (Custom Search)' ดูนะเพื่อน ระบบพร้อมลุยเสมอ!")
-                    
+                tf_rows =
