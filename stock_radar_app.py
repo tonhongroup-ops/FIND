@@ -6,7 +6,7 @@ import yfinance as yf
 st.set_page_config(page_title="Deep Innovation, Global & SET100 Swing Radar Pro", layout="wide")
 
 st.title("🎯 Deep Innovation, Global & SET100 Full-Scale Swing Radar Pro")
-st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตรระดับโลก พร้อมโหมดแกะรอยเจ้ามือสะสมและ SET100 Volume Surge")
+st.markdown("### เรดาร์สแกนหุ้นนวัตกรรม & สิทธิบัตรระดับโลก (ปรับจูนความยืดหยุ่น คัดเจอชัวร์ ไม่หลุดรอดสายตา!)")
 
 @st.cache_data(ttl=86400)
 def get_massive_universe_with_set100():
@@ -51,12 +51,7 @@ def get_massive_universe_with_set100():
 
 def calculate_timeframe_metrics(df):
     timeframe_days = {
-        '1 วัน': 1, 
-        '3 วัน': 3, 
-        '1 อาทิตย์': 5, 
-        '2 อาทิตย์': 10, 
-        '1 เดือน': 20, 
-        '2 เดือน': 40
+        '1 วัน': 1, '3 วัน': 3, '1 อาทิตย์': 5, '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40
     }
     results = {}
     try:
@@ -108,9 +103,9 @@ def calculate_timeframe_metrics(df):
                 vol_change_current = round(((latest_chunk_vol - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
                 vol_change_vs_past = round(((current_vol_avg - past_vol_avg) / past_vol_avg) * 100, 1) if past_vol_avg > 0 else 0.0
 
-            if vol_change_vs_past > 15 and total_range_pct < 15:
+            if vol_change_vs_past > 10 and total_range_pct < 15:
                 market_behavior = "🐋 Smart Money สะสมพลังเงียบ (วอลุ่มหนาแต่ราคานิ่ง)"
-            elif vol_change_vs_past > 20 and total_range_pct >= 15:
+            elif vol_change_vs_past > 15 and total_range_pct >= 15:
                 market_behavior = "🚀 ตลาดเร่งเครื่องเบรกเอาท์แรง (Volume Surge)"
             elif vol_change_vs_past < -10:
                 market_behavior = "⚖️ ตลาดซึมตัว / แรงขายเบาบาง"
@@ -120,16 +115,13 @@ def calculate_timeframe_metrics(df):
             results[label] = {
                 'start_date': start_date, 'high': round(high_max, 2), 'low': round(low_min, 2),
                 'range_pct': total_range_pct, 'poc_price': poc_price,
-                'tf_rsi_avg': tf_rsi_avg,
-                'vol_change_current': vol_change_current,
-                'vol_change_vs_past': vol_change_vs_past,
-                'market_behavior': market_behavior
+                'tf_rsi_avg': tf_rsi_avg, 'vol_change_current': vol_change_current,
+                'vol_change_vs_past': vol_change_vs_past, 'market_behavior': market_behavior
             }
         except:
             results[label] = {
                 'start_date': None, 'high': 0.0, 'low': 0.0, 'range_pct': 0.0, 'poc_price': None,
-                'tf_rsi_avg': 0.0, 'vol_change_current': 0.0, 'vol_change_vs_past': 0.0,
-                'market_behavior': 'N/A'
+                'tf_rsi_avg': 0.0, 'vol_change_current': 0.0, 'vol_change_vs_past': 0.0, 'market_behavior': 'N/A'
             }
         
     try:
@@ -147,35 +139,35 @@ def calculate_rsi(series, period=14):
 
 universe = get_massive_universe_with_set100()
 
-st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน (ฉบับเพื่อนรู้ใจ)")
+st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน (ปรับความยืดหยุ่น)")
 scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
     "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)", 
-    "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคักที่สุดตอนนี้)",
+    "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
     "🔎 3. ค้นหา Ticker อิสระรายตัว (Custom Search)"
 ])
 
 if scan_mode == "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)":
     selected_sector = st.sidebar.selectbox("📂 เลือกกลุ่มอุตสาหกรรม / SET100", list(universe.keys()))
     strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
-        "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [วอลุ่มพุ่งแต่ราคานิ่ง]", 
-        "2. จ่อแนวต้านที่เคยชนมาแล้ว 2 รอบ (Double Resistance Test)"
+        "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
+        "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
     ])
-    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 30, 50, 40)
-    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 80, 75)
-elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคักที่สุดตอนนี้)":
-    st.sidebar.info("ระบบจะกวาดตรวจ Volume ทุกตัวใน SET100 แล้วคัดตัวที่วอลุ่มพีคคึกคักที่สุดมาให้เพื่อนลุย!")
+    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
+    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
+elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+    st.sidebar.info("ระบบจะกวาดตรวจ Volume ทุกตัวใน SET100 แบบยืดหยุ่นเพื่อให้เจอหุ้นเด่นแน่นอน")
 else:
     st.sidebar.markdown("---")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker หุ้นที่ต้องการ (เช่น NVDA, DELTA.BK, PTT.BK)", "NVDA")
 
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, สิทธิบัตรนวัตกรรม & พฤติกรรม Smart Money")
 
-if st.button("🚀 เริ่มรันระบบสแกนเชิงลึก (ลุยกันเลยเพื่อน!)"):
+if st.button("🚀 เริ่มรันระบบสแกน (ลุยกันเพื่อน!)"):
     target_tickers = []
     
     if scan_mode == "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)":
         target_tickers = universe[selected_sector]
-    elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคักที่สุดตอนนี้)":
+    elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
         target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
     else:
         cleaned_ticker = custom_ticker_input.strip().upper()
@@ -188,12 +180,12 @@ if st.button("🚀 เริ่มรันระบบสแกนเชิง�
     total_tickers = len(target_tickers)
     
     for i, ticker in enumerate(target_tickers):
-        status_text.text(f"กำลังวิเคราะห์งบการเงินและวอลุ่มหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        status_text.text(f"กำลังวิเคราะห์หุ้น [{ticker}] ({i+1}/{total_tickers})...")
         progress_bar.progress((i + 1) / total_tickers)
         
         try:
             df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty or len(df) < 40:
+            if df.empty or len(df) < 30:
                 continue
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
@@ -207,48 +199,35 @@ if st.button("🚀 เริ่มรันระบบสแกนเชิง�
             latest_rsi = float(df['RSI'].iloc[-1])
             latest_close = float(df['Close'].iloc[-1])
             
-            # คำนวณ Point of Control (POC) และกรอบราคา 30 วัน
             recent_30 = df.tail(30).copy()
             high_30 = float(recent_30['High'].max())
             low_30 = float(recent_30['Low'].min())
             
-            # คำนวณหา POC 
             hist_sub = recent_30.copy()
             hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
             poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
             poc_price = float(poc_row.mid) if pd.notna(poc_row) else latest_close
             
-            # คำนวณ Vol Change เทียบอดีต (3 วันล่าสุด vs 3 วันก่อนหน้า)
             vol_3d_current = float(df.tail(3)['Volume'].mean())
             vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
             vol_change_3d_pct = ((vol_3d_current - vol_3d_past) / vol_3d_past) * 100 if vol_3d_past > 0 else 0.0
             
-            # เช็คระยะห่างราคาปัจจุบันกับ POC / VAL
             dist_to_poc_pct = abs((latest_close - poc_price) / poc_price) * 100
-            
-            # เช็คการชนแนวต้าน 2 รอบ (Double Resistance)
-            highs = recent_30['High'].values
-            peaks = 0
-            for k in range(2, len(highs)-2):
-                if highs[k] > highs[k-1] and highs[k] > highs[k+1] and highs[k] > highs-2 and highs[k] > highs+2:
-                    if abs(highs[k] - high_30) / high_30 < 0.02:
-                        peaks += 1
-            
             dist_to_high_pct = ((high_30 - latest_close) / latest_close) * 100
             
             is_matched = False
             if scan_mode == "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)":
                 if "1. เจ้ามือกำลังสะสม" in strategy_mode:
-                    # กลยุทธ์ 1: ราคาอยู่ใกล้ POC/VAL ไม่เกิน 2.5%, ราคานิ่ง (Range แคบ) แต่ Vol Change 3 วันพุ่งบวก
-                    if dist_to_poc_pct <= 2.5 and vol_change_3d_pct >= 15 and (rsi_min <= latest_rsi <= rsi_max):
+                    # คลายเกณฑ์: ระยะห่างจาก POC ไม่เกิน 5% และ RSI อยู่ในเกณฑ์
+                    if dist_to_poc_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
                         is_matched = True
                 else:
-                    # กลยุทธ์ 2: ใกล้แนวต้านสูงสุด 30 วันไม่เกิน 2% และเคยทดสอบโซนนี้มาแล้ว
-                    if 0.0 <= dist_to_high_pct <= 2.0 and (rsi_min <= latest_rsi <= rsi_max):
+                    # คลายเกณฑ์: อยู่ใกล้แนวต้าน 30 วันไม่เกิน 5% หรือเพิ่งเบรก
+                    if dist_to_high_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
                         is_matched = True
-            elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคักที่สุดตอนนี้)":
-                # โหมดสแกน Volume คึกคักสุดๆ ใน SET100 (Vol Change 3 วันพุ่งเกิน 30% ขึ้นไป)
-                if vol_change_3d_pct >= 30:
+            elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+                # คลายเกณฑ์ Vol Change ให้กว้างขึ้นเพื่อให้ติดเรดาร์ง่ายขึ้น
+                if vol_change_3d_pct >= 5.0:
                     is_matched = True
             else:
                 is_matched = True
@@ -257,15 +236,15 @@ if st.button("🚀 เริ่มรันระบบสแกนเชิง�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 tp1_price = round(latest_close * 1.05, 2)
                 
-                if scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคักที่สุดตอนนี้)":
-                    stock_status = "🔥 SET100 Volume Surge (วอลุ่มคึกคักเงินเข้าสะพัด)"
-                    swing_reason = f"หุ้นไทยตัวนี้กำลังซื้อขายกันอย่างคึกคักเป็นพิเศษ Volume 3 วันล่าสุดพุ่งทะยานขึ้น {vol_change_3d_pct:+.1f}% เม่าและกองทุนแห่เข้ามาแจม เป็นจังหวะเก็งกำไรตามกระแสเงินสดที่ไหลเข้าทะลัก"
+                if scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+                    stock_status = "🔥 SET100 Volume Active (วอลุ่มคึกคัก เงินเข้าสะพัด)"
+                    swing_reason = f"หุ้นไทยตัวนี้มีความเคลื่อนไหวของ Volume ชัดเจน (Vol Change 3 วันอยู่ที่ {vol_change_3d_pct:+.1f}%) เหมาะกับการเก็งกำไรตามกระแสเงินทุนหมุนเวียนในตลาด"
                 elif "1. เจ้ามือกำลังสะสม" in strategy_mode:
-                    stock_status = "🐋 เจ้ามือกำลังสะสมพลังเงียบ (Accumulation near POC/VAL)"
-                    swing_reason = f"ราคาหุ้นทรงตัวนิ่งๆ อยู่ใกล้ระดับราคาต้นทุนสำคัญ (POC: ${poc_price:.2f}) แต่ Vol Change พุ่งสวนขึ้นมา {vol_change_3d_pct:+.1f}% ฟ้องชัดเจนว่า Smart Money ทยอยเก็บของสะสมพลัง เตรียมลากรอบใหญ่ตามข่าวสิทธิบัตรและงบการเงิน"
+                    stock_status = "🐋 เจ้ามือสะสมพลัง / อยู่ใกล้โซน POC สำคัญ"
+                    swing_reason = f"โครงสร้างราคาเคลื่อนไหวอยู่ใกล้ระดับต้นทุนเฉลี่ยของตลาด (POC: ${poc_price:.2f}) พื้นฐานงบการเงินและสตอรี่สิทธิบัตรนวัตกรรมรองรับดี เหมาะทยอยสะสมไม้แรก"
                 else:
-                    stock_status = "⚡ จ่อชนแนวต้านสำคัญ (Double Resistance Test)"
-                    swing_reason = f"ราคาไต่ระดับขึ้นมาจ่อชนแนวต้านสำคัญที่เคยทดสอบมาแล้ว โครงสร้างงบการเงินแกร่งและมีสตอรี่นวัตกรรมหนุน ถ้าผ่านแนวต้านนี้ไปได้วิ่งยาวแน่เพื่อน!"
+                    stock_status = "⚡ หุ้นจ่อแนวต้านสำคัญ / เตรียมเบรก"
+                    swing_reason = f"ราคาไต่ระดับขึ้นมาใกล้แนวต้าน 30 วัน ($ {high_30:.2f}) ด้วยแรงส่งโมเมนตัมที่ดี มีโอกาสลุ้นทะลุแนวต้านเพื่อทำกำไรช่วงสั้น"
 
                 matched_data.append({
                     'Ticker': ticker, 'Close': round(latest_close, 2), 'Vol_Change_3D': round(vol_change_3d_pct, 1),
@@ -281,10 +260,8 @@ if st.button("🚀 เริ่มรันระบบสแกนเชิง�
     progress_bar.empty()
 
     if matched_data:
-        # เรียงลำดับตาม % Vol Change 3 วันจากมากไปน้อย เพื่อให้เห็นตัวที่คึกคักที่สุดก่อน
         matched_data = sorted(matched_data, key=lambda x: x['Vol_Change_3D'], reverse=True)
-        
-        st.success(f"🎯 สแกนสำเร็จ! คัดเจอหุ้นเกรด A ที่ตรงตามสเปกเพื่อนทั้งหมด **{len(matched_data)} ตัว**!")
+        st.success(f"🎯 สแกนสำเร็จ! คัดเจอหุ้นที่ตรงตามเงื่อนไขยืดหยุ่นทั้งหมด **{len(matched_data)} ตัว**!")
         st.markdown("---")
         
         for item in matched_data:
@@ -324,9 +301,9 @@ if st.button("🚀 เริ่มรันระบบสแกนเชิง�
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้น **{ticker}** ตัวนี้ผ่านเกณฑ์คัดกรองความเข้มข้น งบการเงินแข็งแกร่งและมีสตอรี่นวัตกรรมรองรับชัดเจน ถ้าชอบสไตล์เล่นรอบตาม Smart Money จัดไม้แรกตามแผนได้เลยเพื่อน!")
+                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้น **{ticker}** ตัวนี้ผ่านมาตรฐานการคัดกรองแบบยืดหยุ่น มีปัจจัยพื้นฐานและสตอรี่นวัตกรรมหนุน ลุยไม้แรกตามแผนได้เลยเพื่อน!")
 
                 st.markdown("---")
     else:
-        st.warning("⚠️ ไม่พบหุ้นที่ตรงเงื่อนไขเป๊ะๆ ในรอบนี้ ลองปรับเปลี่ยนหมวดหมู่กลุ่มอุตสาหกรรมหรือสลับโหมดกลยุทธ์ดูใหม่นะเพื่อน!")
-        
+        st.warning("⚠️ ยังไม่พบข้อมูลในหมวดนี้ ลองสลับไปหมวด 'SET100 Volume Surge' หรือ 'ค้นหารายตัว (Custom Search)' ดูนะเพื่อน ระบบพร้อมลุยเสมอ!")
+                
