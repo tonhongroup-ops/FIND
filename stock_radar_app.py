@@ -78,7 +78,12 @@ def get_next_earnings_date(ticker):
 
 def calculate_timeframe_metrics(df):
     timeframe_days = {
-        '1 วัน': 1, '3 วัน': 3, '1 อาทิตย์': 5, '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40
+        '1 วัน': 1, 
+        '3 วัน': 3, 
+        '1 อาทิตย์': 5, 
+        '2 อาทิตย์': 10, 
+        '1 เดือน': 20, 
+        '2 เดือน': 40
     }
     results = {}
     try:
@@ -370,4 +375,25 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
                 
                 tf_rows = []
-                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน'
+                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
+                    if tf_name in item['TF_Data']:
+                        info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ไทม์เฟรม': tf_name, 
+                            'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่น)': poc_display,
+                            '📉 ค่าเฉลี่ย RSI': f"{info['tf_rsi_avg']}",
+                            '📊 Vol Change (ปัจจุบัน)': f"{info['vol_change_current']:+.1f}%",
+                            '📊 Vol Change (เทียบอดีต)': f"{info['vol_change_vs_past']:+.1f}%",
+                            '🔍 สรุปพฤติกรรมภาพรวม': info['market_behavior']
+                        })
+                st.table(pd.DataFrame(tf_rows))
+
+                st.markdown("---")
+                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** วันประกาศงบรอบหน้าคือ **{item['Next_Earnings']}** เช็กให้ชัวร์ว่ารอบสวิงนี้มีเวลาเหลือก่อนงบออกไหม ถือสู้ได้ตามแผน แต่ถ้าหลุด Stop Loss ที่ **${item['Stop_Loss']}** ต้องตัดใจคัทลอสทันทีเพื่อน!")
+
+                st.markdown("---")
+    else:
+        st.warning("⚠️ ยังไม่พบข้อมูลในหมวดนี้ ลองสลับไปหมวดอื่นดูนะเพื่อน ระบบพร้อมลุยเสมอ!")
