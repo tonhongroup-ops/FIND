@@ -312,7 +312,7 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
                 if vol_change_3d_pct >= 5.0:
                     is_matched = True
             else:
-                is_matched = True # โหมด Custom Search บังคับแสดงผลตัวที่ค้นหาทันที
+                is_matched = True
 
             if is_matched:
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
@@ -364,8 +364,7 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
                 col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
                 col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
                 col4.metric("📅 ประกาศงบรอบหน้า", f"{item['Next_Earnings']}")
-
-st.markdown("---")
+                st.markdown("---")
                 clean_t = ticker.replace('.BK', '')
                 yahoo_news_url = f"https://finance.yahoo.com/quote/{ticker}/news/"
                 investing_url = f"https://www.investing.com/search/?q={clean_t}"
@@ -407,4 +406,5 @@ st.markdown("---")
 
                 st.markdown("---")
     else:
-        st.warning("⚠️ ไม่พบข้อมูล Ticker ที่ค้นหา หรือการ
+        st.warning("⚠️ ไม่พบข้อมูล Ticker ที่ค้นหา หรือการเชื่อมต่อดึงข้อมูลมีปัญหา ลองตรวจสอบชื่อ Ticker อีกครั้งนะเพื่อน (หุ้นไทยต้องมี .BK เช่น PTT.BK, DELTA.BK ส่วน NASDAQ พิมพ์ชื่อย่อได้เลย เช่น NVDA, AAPL)")
+                
