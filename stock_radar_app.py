@@ -370,12 +370,7 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 st.markdown("### 🧠 มุมมองวิเคราะห์เชิงลึกจากเพื่อน (งบการเงิน, สิทธิบัตร & เกมเจ้ามือ Smart Money)")
                 st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **วิเคราะห์พฤติกรรมราคา:** {item['Swing_Reason']}")
                 st.success(f"🧬 **แกะรอยสิทธิบัตร & นวัตกรรม:** {item['Patent_Theme']}\n\n📊 **วิเคราะห์งบการเงิน & ความแข็งแกร่ง:** {item['Fundamental_Review']}")
-
-                st.markdown("---")
-                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
-                
-                tf_rows = []
-                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
+for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
                     if tf_name in item['TF_Data']:
                         info = item['TF_Data'][tf_name]
                         poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
@@ -397,3 +392,9 @@ if st.button("🚀 เริ่มรันระบบสแกน (ลุย�
                 st.markdown("---")
     else:
         st.warning("⚠️ ยังไม่พบข้อมูลในหมวดนี้ ลองสลับไปหมวดอื่นดูนะเพื่อน ระบบพร้อมลุยเสมอ!")
+
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
+                
+                tf_rows = []
+                
