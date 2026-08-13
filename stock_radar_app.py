@@ -229,11 +229,11 @@ scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการส
     "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", 
     "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
     "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)",
-    "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
+    "🔎 4. ค้นหา Ticker เลือกโหมดกลยุทธ์การสแกน (NASDAQ / SET100 Custom Search)"
 ])
 
 selected_sectors = []
-if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%"]:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม (เลือกได้มากกว่า 1 Sector)")
     
@@ -254,13 +254,14 @@ if scan_mode == "📂 1. สแกนราย Sector ที่ต้องก�
     if use_sec6: selected_sectors.append(sector_keys[5])
     if use_sec7: selected_sectors.append(sector_keys[6])
     
-    strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
-        "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
-        "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
-    ])
-    rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
-    rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
-elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+        strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
+            "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
+            "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
+        ])
+        rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
+        rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
+        notif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
     st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะหุ้นในกลุ่ม SET100 แบบยืดหยุ่น")
 elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
     st.sidebar.info("🎯 **โหมด Buy on Dip รอบงบ:** ระบบจะสแกนหาหุ้นทุกกลุ่มที่กำลังจะประกาศงบในอีก 7 วัน และราคาในรอบ 7 วันล่าสุดติดลบ")
@@ -273,22 +274,19 @@ else:
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
 
 if st.button("🚀 เริ่มรันระบบสแกนตาม Sector ที่เลือก (ลุยกันเพื่อน!)"):
-    target_tickers = []
+        target_tickers = []
     
-    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+    if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%"]:
         for sec in selected_sectors:
             target_tickers.extend(universe[sec])
         target_tickers = list(set(target_tickers))
     elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
         target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
-    elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
-        for sec_list in universe.values():
-            target_tickers.extend(sec_list)
-        target_tickers = list(set(target_tickers))
     else:
         cleaned_ticker = custom_ticker_input.strip().upper()
         if cleaned_ticker:
             target_tickers = [cleaned_ticker]
+
 
     if not target_tickers:
         st.warning("⚠️ มึงยังไม่ได้เลือก Sector หรือหมวดหมู่ใน Sidebar ด้านซ้ายเลยเพื่อน! ติ๊กเลือกอย่างน้อย 1 Sector ก่อนนะ")
@@ -352,9 +350,11 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
             elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
                 if vol_change_3d_pct >= 5.0:
                     is_matched = True
-            elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
-                if 0 <= days_left <= 7 and return_7d < 0:
+            elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
+                # สมมติปรับเงื่อนไข days_since_earnings อยู่ในช่วง 0-7 วัน และ return_7d ติดลบ -20% ถึง -5%
+                if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
                     is_matched = True
+
             else:
                 is_matched = True
 
