@@ -253,24 +253,22 @@ if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องก�
     if use_sec5: selected_sectors.append(sector_keys[4])
     if use_sec6: selected_sectors.append(sector_keys[5])
     if use_sec7: selected_sectors.append(sector_keys[6])
-    
     if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
-        strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
+    if scan_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
             "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
             "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
         ])
         rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
         rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
-        notif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
     st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะหุ้นในกลุ่ม SET100 แบบยืดหยุ่น")
-elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
-    st.sidebar.info("🎯 **โหมด Buy on Dip รอบงบ:** ระบบจะสแกนหาหุ้นทุกกลุ่มที่กำลังจะประกาศงบในอีก 7 วัน และราคาในรอบ 7 วันล่าสุดติดลบ")
 else:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔎 ระบบค้นหา Ticker อิสระ (NASDAQ / SET100)")
     custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker ที่ต้องการ (เช่น NVDA, AAPL, PTT.BK, DELTA.BK)", "NVDA")
     st.sidebar.info("💡 **ทริก:** หุ้นไทยให้ใส่ `.BK` ต่อท้าย หุ้นสหรัฐพิมพ์ชื่อย่อได้เลยเพื่อน!")
 
+    
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
 
 if st.button("🚀 เริ่มรันระบบสแกนตาม Sector ที่เลือก (ลุยกันเพื่อน!)"):
