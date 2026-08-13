@@ -346,7 +346,8 @@ if st.button("🚀 เริ่มรันระบบสแกนตามเ�
                 if vol_change_3d_pct >= 5.0:
                     is_matched = True
             elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
-                if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
+                # ปรับเงื่อนไขให้ผ่อนปรนขึ้นเล็กน้อยเผื่อข้อมูลวันประกาศงบดีเลย์
+                if 0 <= days_since_earnings <= 14 and (-25.0 <= return_7d <= -3.0):
                     is_matched = True
             else:
                 is_matched = True
