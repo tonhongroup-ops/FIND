@@ -445,5 +445,66 @@ if st.button("🚀 เริ่มรันระบบสแกนตามเ�
                 st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** โซนนี้เช็กข้อมูลสิทธิบัตรและงบการเงินประกอบเรียบร้อย ถ้าหุ้นหลุด Stop Loss ที่ **${item['Stop_Loss']}** ให้ตัดใจคัทลอสทันที อย่าฝืนถือลุ้นเพื่อน!")
 
                 st.markdown("---")
-            else:
+    else:
+        st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับกลุ่ม Sector หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")
+
+    if matched_data:
+        matched_data = sorted(matched_data, key=lambda x: x['Vol_Change_3D'], reverse=True)
+        st.success(f"🎯 ดึงข้อมูลสำเร็จ! พบหุ้นเป้าหมายใน Sector ที่เลือก **{len(matched_data)} ตัว** เรียบร้อยเพื่อน!")
+        st.markdown("---")
+        
+        for item in matched_data:
+            ticker = item['Ticker']
+            current_close = item['Close']
+            
+            expander_title = f"💎 [{ticker}] | ราคาปิด: ${current_close} | Vol Change (3D): {item['Vol_Change_3D']:+.1f}% | สถานะ: {item['Stock_Status']}"
+            
+            with st.expander(expander_title, expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
+                col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
+                col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
+                col4.metric("📅 ข้อมูลรอบงบการเงิน", f"{item['Next_Earnings']}")
+                st.markdown("---")
+                clean_t = ticker.replace('.BK', '')
+                yahoo_news_url = f"https://finance.yahoo.com/quote/{ticker}/news/"
+                investing_url = f"https://www.investing.com/search/?q={clean_t}"
+                
+                st.markdown(f"### 📰 สรุปข่าวสารด่วน & แหล่งแกะรอยสตอรี่ [{ticker}]")
+                st.info(item['News_Summary'])
+                
+                col_n1, col_n2 = st.columns(2)
+                col_n1.link_button(f"🔗 ไปที่ Yahoo Finance News ({ticker})", yahoo_news_url)
+                col_n2.link_button(f"🔗 ค้นหาข่าวเชิงลึกใน Investing.com ({clean_t})", investing_url)
+                
+                st.markdown("---")
+                st.markdown("### 🧠 มุมมองวิเคราะห์เชิงลึกจากเพื่อน (งบการเงิน, สิทธิบัตร & เกมเจ้ามือ Smart Money)")
+                st.info(f"📌 **สถานะหุ้น:** {item['Stock_Status']}\n\n💡 **วิเคราะห์พฤติกรรมราคา:** {item['Swing_Reason']}")
+                st.success(f"🧬 **แกะรอยสิทธิบัตร & นวัตกรรมอนาคต:** {item['Patent_Theme']}\n\n📊 **วิเคราะห์งบการเงิน & ความแข็งแกร่งกิจการ:** {item['Fundamental_Review']}")
+
+                st.markdown("---")
+                st.markdown("### ⏱️ ตารางแกะรอย % Vol Change ทั้ง 2 ค่า, ค่าเฉลี่ย RSI & พฤติกรรมตลาดในแต่ละไทม์เฟรม")
+                
+                tf_rows = []
+                for tf_name in ['1 วัน', '3 วัน', '1 อาทิตย์', '2 อาทิตย์', '1 เดือน', '2 เดือน']:
+                    if tf_name in item['TF_Data']:
+                        info = item['TF_Data'][tf_name]
+                        poc_display = f"${info['poc_price']}" if info['poc_price'] is not None else "None"
+                        tf_rows.append({
+                            'ไทม์เฟรม': tf_name, 
+                            'ราคาสูง/ต่ำสุด': f"${info['high']} / ${info['low']}",
+                            'กรอบ (Range)': f"{info['range_pct']}%",
+                            'POC (ฐานราคาหนาแน่น)': poc_display,
+                            '📉 ค่าเฉลี่ย RSI': f"{info['tf_rsi_avg']}",
+                            '📊 Vol Change (ปัจจุบัน)': f"{info['vol_change_current']:+.1f}%",
+                            '📊 Vol Change (เทียบอดีต)': f"{info['vol_change_vs_past']:+.1f}%",
+                            '🔍 สรุปพฤติกรรมภาพรวม': info['market_behavior']
+                        })
+                st.table(pd.DataFrame(tf_rows))
+
+                st.markdown("---")
+                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** โซนนี้เช็กข้อมูลสิทธิบัตรและงบการเงินประกอบเรียบร้อย ถ้าหุ้นหลุด Stop Loss ที่ **${item['Stop_Loss']}** ให้ตัดใจคัทลอสทันที อย่าฝืนถือลุ้นเพื่อน!")
+
+                st.markdown("---")
+    else:
         st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับกลุ่ม Sector หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")
