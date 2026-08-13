@@ -347,125 +347,6 @@ if st.button("🚀 เริ่มรันระบบสแกนตามเ�
                     is_matched = True
             elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
                 if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
-# --- SIDEBAR & SCAN CONFIG ---
-st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน")
-scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
-    "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", 
-    "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
-    "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%",
-    "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
-])
-
-selected_sectors = []
-if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม")
-    use_sec1 = st.sidebar.checkbox("💻 IT, AI & Semiconductors", value=True)
-    use_sec2 = st.sidebar.checkbox("🤖 Robotics", value=False)
-    use_sec3 = st.sidebar.checkbox("🧬 Biotech", value=False)
-    use_sec4 = st.sidebar.checkbox("🛡️ Consumer Staples", value=False)
-    use_sec5 = st.sidebar.checkbox("🌐 Fintech", value=False)
-    use_sec6 = st.sidebar.checkbox("🚀 Space/Defense", value=False)
-    use_sec7 = st.sidebar.checkbox("🇹🇭 SET100 Giants", value=False)
-    
-    sec_map = [use_sec1, use_sec2, use_sec3, use_sec4, use_sec5, use_sec6, use_sec7]
-    all_keys = list(universe.keys())
-    for idx, active in enumerate(sec_map):
-        if active:
-            selected_sectors.append(all_keys[idx])
-
-    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
-        strategy_mode = st.sidebar.selectbox("🎯 กลยุทธ์", ["1. เจ้ามือกำลังสะสม", "2. จ่อแนวต้าน/เบรกเอาท์"])
-        rsi_min, rsi_max = st.sidebar.slider("📉 RSI", 25, 90, (35, 80))
-
-elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
-    st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะ SET100")
-
-else:
-    st.sidebar.markdown("---")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker (เช่น NVDA, PTT.BK)", "NVDA")
-
-
-st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
-
-if st.button("🚀 เริ่มรันระบบสแกนตามเงื่อนไข (ลุยกันเพื่อน!)"):
-    target_tickers = []
-    
-    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
-        for sec in selected_sectors:
-            target_tickers.extend(universe[sec])
-        target_tickers = list(set(target_tickers))
-    elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
-        target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
-    else:
-        cleaned_ticker = custom_ticker_input.strip().upper()
-        if cleaned_ticker:
-            target_tickers = [cleaned_ticker]
-
-    if not target_tickers:
-        st.warning("⚠️ มึงยังไม่ได้เลือก Sector หรือหมวดหมู่ใน Sidebar ด้านซ้ายเลยเพื่อน! ติ๊กเลือกอย่างน้อย 1 Sector ก่อนนะ")
-        st.stop()
-
-    matched_data = []
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    total_tickers = len(target_tickers)
-    
-    for i, ticker in enumerate(target_tickers):
-        status_text.text(f"กำลังวิเคราะห์และดึงข้อมูลงบการเงินหุ้น [{ticker}] ({i+1}/{total_tickers})...")
-        progress_bar.progress((i + 1) / total_tickers)
-        
-        try:
-            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-            if df.empty or len(df) < 30:
-                continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.droplevel(1)
-            df.columns = [str(c).capitalize() for c in df.columns]
-            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
-            df['RSI'] = calculate_rsi(df['Close'], 14)
-            df = df.dropna(subset=['RSI'])
-            if len(df) == 0:
-                continue
-                
-            latest_rsi = float(df['RSI'].iloc[-1])
-            latest_close = float(df['Close'].iloc[-1])
-            
-            recent_30 = df.tail(30).copy()
-            high_30 = float(recent_30['High'].max())
-            low_30 = float(recent_30['Low'].min())
-            
-            hist_sub = recent_30.copy()
-            hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
-            poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
-            poc_price = float(poc_row.mid) if pd.notna(poc_row) else latest_close
-            
-            stop_loss_price = round(min(poc_price * 0.97, low_30 * 0.99), 2)
-            tp1_price = round(latest_close * 1.05, 2)
-            tp2_price = round(latest_close * 1.10, 2)
-            
-            next_earnings_str, days_since_earnings, return_7d = get_earnings_info_and_post_metrics(ticker, df)
-            
-            vol_3d_current = float(df.tail(3)['Volume'].mean())
-            vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
-            vol_change_3d_pct = ((vol_3d_current - vol_3d_past) / vol_3d_past) * 100 if vol_3d_past > 0 else 0.0
-            
-            dist_to_poc_pct = abs((latest_close - poc_price) / poc_price) * 100
-            dist_to_high_pct = ((high_30 - latest_close) / latest_close) * 100
-            
-            is_matched = False
-            if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
-                if "1. เจ้ามือกำลังสะสม" in strategy_mode:
-                    if dist_to_poc_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = True
-                else:
-                    if dist_to_high_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = True
-            elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
-                if vol_change_3d_pct >= 5.0:
-                    is_matched = True
-            elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
-                if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
                     is_matched = True
             else:
                 is_matched = True
@@ -474,7 +355,7 @@ if st.button("🚀 เริ่มรันระบบสแกนตามเ�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 patent_theme, fundamental_review, news_summary = get_smart_fundamental_and_patent_insight(ticker)
                 
-                if scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Factย่อลง 5-20%":
+                if scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
                     stock_status = f"🎯 Buy on Dip หลังงบ (ผ่านไป {days_since_earnings} วัน | 7D Return: {return_7d}%)"
                     swing_reason = f"งบเพิ่งประกาศผ่านไป {days_since_earnings} วัน แต่โดนแรงเทขาย Sell on Fact กดราคาลงมา {return_7d}% อยู่ในโซนน่าช้อนซื้อสะสมลุ้นเด้งรีบาวด์!"
                 elif scan_mode == "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)":
@@ -565,4 +446,4 @@ if st.button("🚀 เริ่มรันระบบสแกนตามเ�
 
                 st.markdown("---")
     else:
-        st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับกลุ่ม Sector หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")
+        st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับกลุ่ม Sector หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")l
