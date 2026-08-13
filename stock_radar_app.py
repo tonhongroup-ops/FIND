@@ -383,7 +383,7 @@ elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ
 
 else:
     st.sidebar.markdown("---")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker (เช่น NVDA, PTT.BK)", "NVDA"))
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker (เช่น NVDA, PTT.BK)", "NVDA")
 
 
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
