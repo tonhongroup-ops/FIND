@@ -50,7 +50,7 @@ def get_massive_universe_with_set100():
     }
     return universe
 
-def get_next_earnings_date(ticker):
+def get_earnings_info_and_7d_return(ticker, df):
     try:
         tk = yf.Ticker(ticker)
         cal = tk.calendar
@@ -63,18 +63,27 @@ def get_next_earnings_date(ticker):
             if 'Earnings Date' in cal.columns:
                 earnings_date = pd.to_datetime(cal['Earnings Date'].iloc[0]).date()
         
-        if earnings_date is None:
-            return "-"
-            
         today = datetime.now().date()
-        days_left = (earnings_date - today).days
+        days_left = (earnings_date - today).days if earnings_date else 999
         
-        if days_left < 0:
-            return f"{earnings_date.strftime('%Y-%m-%d')} (ผ่านไปแล้ว)"
+        if earnings_date is None:
+            earnings_str = "-"
+        elif days_left < 0:
+            earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (ผ่านไปแล้ว)"
         else:
-            return f"{earnings_date.strftime('%Y-%m-%d')} (อีก {days_left} วัน)"
+            earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (อีก {days_left} วัน)"
+
+        # คำนวณราคาเปลี่ยนแปลงในช่วง 7 วันล่าสุด (7-Day Price Return)
+        if len(df) >= 7:
+            price_7d_ago = float(df['Close'].iloc[-7])
+            current_close = float(df['Close'].iloc[-1])
+            return_7d = round(((current_close - price_7d_ago) / price_7d_ago) * 100, 2)
+        else:
+            return_7d = 0.0
+
+        return earnings_str, days_left, return_7d
     except:
-        return "-"
+        return "-", 999, 0.0
 
 def calculate_timeframe_metrics(df):
     timeframe_days = {
@@ -220,7 +229,8 @@ st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์
 scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
     "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)", 
     "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
-    "🔎 3. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
+    "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)",
+    "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
 ])
 
 if scan_mode == "📂 1. สแกนหุ้นนวัตกรรมโลก & SET100 (เลือกกลยุทธ์เชิงลึก)":
@@ -233,6 +243,8 @@ if scan_mode == "📂 1. สแกนหุ้นนวัตกรรมโล�
     rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
 elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
     st.sidebar.info("ระบบจะกวาดตรวจ Volume ทุกตัวใน SET100 แบบยืดหยุ่นเพื่อให้เจอหุ้นเด่นแน่นอน")
+elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
+    st.sidebar.info("🎯 **โหมด Buy on Dip รอบงบ:** ระบบจะสแกนหาหุ้นทุกกลุ่มที่กำลังจะประกาศงบในอีก 7 วัน และราคาในช่วง 7 วันล่าสุดติดลบ (โดนทุบก่อนงบออก)")
 else:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🔎 ระบบค้นหา Ticker อิสระ (NASDAQ / SET100)")
@@ -248,6 +260,11 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
         target_tickers = universe[selected_sector]
     elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
         target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
+    elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
+        # กวาดทุกหมวดหมู่มารวมกันเพื่อสแกนหาหุ้นประกาศงบ
+        for sec_list in universe.values():
+            target_tickers.extend(sec_list)
+        target_tickers = list(set(target_tickers)) # ตัดตัวซ้ำ
     else:
         cleaned_ticker = custom_ticker_input.strip().upper()
         if cleaned_ticker:
@@ -291,7 +308,7 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
             tp1_price = round(latest_close * 1.05, 2)
             tp2_price = round(latest_close * 1.10, 2)
             
-            next_earnings = get_next_earnings_date(ticker)
+            next_earnings, days_left, return_7d = get_earnings_info_and_7d_return(ticker, df)
             
             vol_3d_current = float(df.tail(3)['Volume'].mean())
             vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
@@ -311,6 +328,10 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
             elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
                 if vol_change_3d_pct >= 5.0:
                     is_matched = True
+            elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
+                # เงื่อนไข: ประกาศงบภายใน 7 วันข้างหน้า (0 <= days_left <= 7) และราคา 7 วันล่าสุดติดลบ (return_7d < 0)
+                if 0 <= days_left <= 7 and return_7d < 0:
+                    is_matched = True
             else:
                 is_matched = True
 
@@ -318,7 +339,10 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 patent_theme, fundamental_review, news_summary = get_smart_fundamental_and_patent_insight(ticker)
                 
-                if scan_mode == "🔎 3. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)":
+                if scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
+                    stock_status = f"🎯 Buy on Dip รอบงบ (งบออกใน {days_left} วัน | 7D Return: {return_7d}%)"
+                    swing_reason = f"หุ้นตัวนี้กำลังจะประกาศงบในอีก {days_left} วันข้างหน้า แต่ช่วง 7 วันที่ผ่านมาโดนทุบราคาลงไป {return_7d}% เข้าข่ายโดนกดราคาก่อนงออก เหมาะช้อนซื้อสะสมลุ้นเด้งหลังงบออก!"
+                elif scan_mode == "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)":
                     stock_status = "🎯 Custom Target Found (หุ้นที่คุณเจาะจงค้นหา)"
                     swing_reason = f"ดึงข้อมูลวิเคราะห์เจาะลึกเฉพาะตัว [{ticker}] สำเร็จ โครงสร้างราคาปัจจุบันอยู่ที่ ${latest_close:.2f} (RSI: {latest_rsi:.1f}) พร้อมประเมินจังหวะเข้าทำกำไร"
                 elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
@@ -333,7 +357,7 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
 
                 matched_data.append({
                     'Ticker': ticker, 'Close': round(latest_close, 2), 'Vol_Change_3D': round(vol_change_3d_pct, 1),
-                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg,
+                    'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg, 'Return_7D': return_7d,
                     'TF_Data': tf_data, 'TP1': tp1_price, 'TP2': tp2_price,
                     'POC_Price': round(poc_price, 2), 'Stop_Loss': stop_loss_price,
                     'Resistance_Price': round(high_30, 2), 'Next_Earnings': next_earnings,
@@ -356,12 +380,12 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
             ticker = item['Ticker']
             current_close = item['Close']
             
-            expander_title = f"💎 [{ticker}] | ราคาปิด: ${current_close} | Vol Change (3D): {item['Vol_Change_3D']:+.1f}% | สถานะ: {item['Stock_Status']}"
+            expander_title = f"💎 [{ticker}] | ราคาปิด: ${current_close} | 7D Return: {item['Return_7D']}% | สถานะ: {item['Stock_Status']}"
             
             with st.expander(expander_title, expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
-                col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
+                col2.metric("📉 ผลตอบแทน 7 วันล่าสุด", f"{item['Return_7D']}%", delta_color="inverse")
                 col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
                 col4.metric("📅 ประกาศงบรอบหน้า", f"{item['Next_Earnings']}")
                 st.markdown("---")
@@ -402,9 +426,8 @@ if st.button("🚀 เริ่มรันระบบสแกน & ค้น�
                 st.table(pd.DataFrame(tf_rows))
 
                 st.markdown("---")
-                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** วันประกาศงบรอบหน้าคือ **{item['Next_Earnings']}** เช็กให้ชัวร์ว่ารอบสวิงนี้มีเวลาเหลือก่อนงบออกไหม ถือสู้ได้ตามแผน แต่ถ้าหลุด Stop Loss ที่ **${item['Stop_Loss']}** ต้องตัดใจคัทลอสทันทีเพื่อน!")
+                st.warning(f"🔥 **คำแนะนำจากเพื่อนรัก:** หุ้นตัวนี้กำลังจะประกาศงบใน **{item['Next_Earnings']}** และราคาเพิ่งโดนทุบลงไป **{item['Return_7D']}%** เป็นจังหวะทยอยเก็บของถูก (Buy on Dip) ที่คมกริบ แต่วินัยต้องมาเป็นอันดับหนึ่ง ถ้าหลุด Stop Loss ที่ **${item['Stop_Loss']}** ต้องตัดใจคัทลอสทันทีเพื่อน!")
 
                 st.markdown("---")
     else:
-        st.warning("⚠️ ไม่พบข้อมูล Ticker ที่ค้นหา หรือการเชื่อมต่อดึงข้อมูลมีปัญหา ลองตรวจสอบชื่อ Ticker อีกครั้งนะเพื่อน (หุ้นไทยต้องมี .BK เช่น PTT.BK, DELTA.BK ส่วน NASDAQ พิมพ์ชื่อย่อได้เลย เช่น NVDA, AAPL)")
-                
+        st.warning("⚠️ ไม่พบหุ้นที่เข้าเงื่อนไขประกาศงบใน 7 วันและราคาติดลบในรอบนี้ ลองเปลี่ยนโหมดหรือกลับมาเช็กลิสต์ใหม่อีกรอบนะเพื่อน!")
