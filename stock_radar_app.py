@@ -50,7 +50,7 @@ def get_massive_universe_with_set100():
     }
     return universe
 
-def get_earnings_info_and_7d_return(ticker, df):
+def get_earnings_info_and_post_metrics(ticker, df):
     try:
         tk = yf.Ticker(ticker)
         cal = tk.calendar
@@ -64,14 +64,16 @@ def get_earnings_info_and_7d_return(ticker, df):
                 earnings_date = pd.to_datetime(cal['Earnings Date'].iloc[0]).date()
         
         today = datetime.now().date()
-        days_left = (earnings_date - today).days if earnings_date else 999
         
         if earnings_date is None:
+            days_since_earnings = 999
             earnings_str = "-"
-        elif days_left < 0:
-            earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (ผ่านไปแล้ว)"
         else:
-            earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (อีก {days_left} วัน)"
+            days_since_earnings = (today - earnings_date).days
+            if days_since_earnings < 0:
+                earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (ยังไม่ออก)"
+            else:
+                earnings_str = f"{earnings_date.strftime('%Y-%m-%d')} (ผ่านไปแล้ว {days_since_earnings} วัน)"
 
         if len(df) >= 7:
             price_7d_ago = float(df['Close'].iloc[-7])
@@ -80,19 +82,12 @@ def get_earnings_info_and_7d_return(ticker, df):
         else:
             return_7d = 0.0
 
-        return earnings_str, days_left, return_7d
+        return earnings_str, days_since_earnings, return_7d
     except:
         return "-", 999, 0.0
 
 def calculate_timeframe_metrics(df):
-    timeframe_days = {
-        '1 วัน': 1, 
-        '3 วัน': 3, 
-        '1 อาทิตย์': 5, 
-        '2 อาทิตย์': 10, 
-        '1 เดือน': 20, 
-        '2 เดือน': 40
-    }
+    timeframe_days = {'1 วัน': 1, '3 วัน': 3, '1 อาทิตย์': 5, '2 อาทิตย์': 10, '1 เดือน': 20, '2 เดือน': 40}
     results = {}
     try:
         current_close = float(df['Close'].iloc[-1])
@@ -224,16 +219,17 @@ def get_smart_fundamental_and_patent_insight(ticker):
 
 universe = get_massive_universe_with_set100()
 
+# --- SIDEBAR & SCAN CONFIG ---
 st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน")
 scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
     "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", 
     "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
-    "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)",
-    "🔎 4. ค้นหา Ticker เลือกโหมดกลยุทธ์การสแกน (NASDAQ / SET100 Custom Search)"
+    "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%",
+    "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
 ])
 
 selected_sectors = []
-if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%"]:
+if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม (เลือกได้มากกว่า 1 Sector)")
     
@@ -253,14 +249,30 @@ if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องก�
     if use_sec5: selected_sectors.append(sector_keys[4])
     if use_sec6: selected_sectors.append(sector_keys[5])
     if use_sec7: selected_sectors.append(sector_keys[6])
+    
     if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+        strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
+            "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
+            "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
+        ])
+        rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
+        rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
+
+elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+    st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะหุ้นในกลุ่ม SET100 แบบยืดหยุ่น")
+
+else:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔎 ระบบค้นหา Ticker อิสระ (NASDAQ / SET100)")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker ที่ต้องการ (เช่น NVDA, AAPL, PTT.BK, DELTA.BK)", "NVDA")
+    st.sidebar.info("💡 **ทริก:** หุ้นไทยให้ใส่ `.BK` ต่อท้าย หุ้นสหรัฐพิมพ์ชื่อย่อได้เลยเพื่อน!")
 
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
 
-if st.button("🚀 เริ่มรันระบบสแกนตาม Sector ที่เลือก (ลุยกันเพื่อน!)"):
-        target_tickers = []
+if st.button("🚀 เริ่มรันระบบสแกนตามเงื่อนไข (ลุยกันเพื่อน!)"):
+    target_tickers = []
     
-    if scan_mode in ["📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%"]:
+    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
         for sec in selected_sectors:
             target_tickers.extend(universe[sec])
         target_tickers = list(set(target_tickers))
@@ -270,7 +282,6 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
         cleaned_ticker = custom_ticker_input.strip().upper()
         if cleaned_ticker:
             target_tickers = [cleaned_ticker]
-
 
     if not target_tickers:
         st.warning("⚠️ มึงยังไม่ได้เลือก Sector หรือหมวดหมู่ใน Sidebar ด้านซ้ายเลยเพื่อน! ติ๊กเลือกอย่างน้อย 1 Sector ก่อนนะ")
@@ -314,7 +325,7 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
             tp1_price = round(latest_close * 1.05, 2)
             tp2_price = round(latest_close * 1.10, 2)
             
-            next_earnings, days_left, return_7d = get_earnings_info_and_7d_return(ticker, df)
+            next_earnings_str, days_since_earnings, return_7d = get_earnings_info_and_post_metrics(ticker, df)
             
             vol_3d_current = float(df.tail(3)['Volume'].mean())
             vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
@@ -335,10 +346,136 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
                 if vol_change_3d_pct >= 5.0:
                     is_matched = True
             elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
-                # สมมติปรับเงื่อนไข days_since_earnings อยู่ในช่วง 0-7 วัน และ return_7d ติดลบ -20% ถึง -5%
+                if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
+# --- SIDEBAR & SCAN CONFIG ---
+st.sidebar.markdown("### ⚙️ เลือกโหมดกลยุทธ์การสแกน")
+scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการสแกน", [
+    "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)", 
+    "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)",
+    "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%",
+    "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
+])
+
+selected_sectors = []
+if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม (เลือกได้มากกว่า 1 Sector)")
+    
+    use_sec1 = st.sidebar.checkbox("💻 Information Technology, AI & Semiconductors", value=True)
+    use_sec2 = st.sidebar.checkbox("🤖 Smart Manufacturing & Robotics", value=False)
+    use_sec3 = st.sidebar.checkbox("🧬 Biotech & Healthcare", value=False)
+    use_sec4 = st.sidebar.checkbox("🛡️ Consumer Staples & High-Moat", value=False)
+    use_sec5 = st.sidebar.checkbox("🌐 Big Platforms & Fintech", value=False)
+    use_sec6 = st.sidebar.checkbox("🚀 Space Tech, Defense & Materials", value=False)
+    use_sec7 = st.sidebar.checkbox("🇹🇭 SET100 Top Thai Giants", value=False)
+    
+    sector_keys = list(universe.keys())
+    if use_sec1: selected_sectors.append(sector_keys[0])
+    if use_sec2: selected_sectors.append(sector_keys[1])
+    if use_sec3: selected_sectors.append(sector_keys[2])
+    if use_sec4: selected_sectors.append(sector_keys[3])
+    if use_sec5: selected_sectors.append(sector_keys[4])
+    if use_sec6: selected_sectors.append(sector_keys[5])
+    if use_sec7: selected_sectors.append(sector_keys[6])
+    
+    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+        strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
+            "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
+            "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
+        ])
+        rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
+        rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
+
+elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+    st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะหุ้นในกลุ่ม SET100 แบบยืดหยุ่น")
+
+else:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔎 ระบบค้นหา Ticker อิสระ (NASDAQ / SET100)")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker ที่ต้องการ (เช่น NVDA, AAPL, PTT.BK, DELTA.BK)", "NVDA")
+    st.sidebar.info("💡 **ทริก:** หุ้นไทยให้ใส่ `.BK` ต่อท้าย หุ้นสหรัฐพิมพ์ชื่อย่อได้เลยเพื่อน!")
+
+st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
+
+if st.button("🚀 เริ่มรันระบบสแกนตามเงื่อนไข (ลุยกันเพื่อน!)"):
+    target_tickers = []
+    
+    if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
+        for sec in selected_sectors:
+            target_tickers.extend(universe[sec])
+        target_tickers = list(set(target_tickers))
+    elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+        target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
+    else:
+        cleaned_ticker = custom_ticker_input.strip().upper()
+        if cleaned_ticker:
+            target_tickers = [cleaned_ticker]
+
+    if not target_tickers:
+        st.warning("⚠️ มึงยังไม่ได้เลือก Sector หรือหมวดหมู่ใน Sidebar ด้านซ้ายเลยเพื่อน! ติ๊กเลือกอย่างน้อย 1 Sector ก่อนนะ")
+        st.stop()
+
+    matched_data = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_tickers = len(target_tickers)
+    
+    for i, ticker in enumerate(target_tickers):
+        status_text.text(f"กำลังวิเคราะห์และดึงข้อมูลงบการเงินหุ้น [{ticker}] ({i+1}/{total_tickers})...")
+        progress_bar.progress((i + 1) / total_tickers)
+        
+        try:
+            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+            if df.empty or len(df) < 30:
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+            df.columns = [str(c).capitalize() for c in df.columns]
+            df = df.dropna(subset=['Close', 'Volume', 'High', 'Low'])
+            df['RSI'] = calculate_rsi(df['Close'], 14)
+            df = df.dropna(subset=['RSI'])
+            if len(df) == 0:
+                continue
+                
+            latest_rsi = float(df['RSI'].iloc[-1])
+            latest_close = float(df['Close'].iloc[-1])
+            
+            recent_30 = df.tail(30).copy()
+            high_30 = float(recent_30['High'].max())
+            low_30 = float(recent_30['Low'].min())
+            
+            hist_sub = recent_30.copy()
+            hist_sub['Bin'] = pd.cut(hist_sub['Close'], bins=10)
+            poc_row = hist_sub.groupby('Bin', observed=False)['Volume'].sum().idxmax()
+            poc_price = float(poc_row.mid) if pd.notna(poc_row) else latest_close
+            
+            stop_loss_price = round(min(poc_price * 0.97, low_30 * 0.99), 2)
+            tp1_price = round(latest_close * 1.05, 2)
+            tp2_price = round(latest_close * 1.10, 2)
+            
+            next_earnings_str, days_since_earnings, return_7d = get_earnings_info_and_post_metrics(ticker, df)
+            
+            vol_3d_current = float(df.tail(3)['Volume'].mean())
+            vol_3d_past = float(df.iloc[-6:-3]['Volume'].mean()) if len(df) >= 6 else vol_3d_current
+            vol_change_3d_pct = ((vol_3d_current - vol_3d_past) / vol_3d_past) * 100 if vol_3d_past > 0 else 0.0
+            
+            dist_to_poc_pct = abs((latest_close - poc_price) / poc_price) * 100
+            dist_to_high_pct = ((high_30 - latest_close) / latest_close) * 100
+            
+            is_matched = False
+            if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
+                if "1. เจ้ามือกำลังสะสม" in strategy_mode:
+                    if dist_to_poc_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
+                        is_matched = True
+                else:
+                    if dist_to_high_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
+                        is_matched = True
+            elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+                if vol_change_3d_pct >= 5.0:
+                    is_matched = True
+            elif scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
                 if 0 <= days_since_earnings <= 7 and (-20.0 <= return_7d <= -5.0):
                     is_matched = True
-
             else:
                 is_matched = True
 
@@ -346,9 +483,9 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
                 tf_data, rsi_2m_avg = calculate_timeframe_metrics(df)
                 patent_theme, fundamental_review, news_summary = get_smart_fundamental_and_patent_insight(ticker)
                 
-                if scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
-                    stock_status = f"🎯 Buy on Dip รอบงบ (งบออกใน {days_left} วัน | 7D Return: {return_7d}%)"
-                    swing_reason = f"หุ้นตัวนี้กำลังจะประกาศงบในอีก {days_left} วันข้างหน้า แต่ช่วง 7 วันที่ผ่านมาโดนทุบราคาลงไป {return_7d}% เข้าข่ายโดนกดราคาก่อนงบออก เหมาะช้อนซื้อสะสมลุ้นเด้งหลังงบ!"
+                if scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Factย่อลง 5-20%":
+                    stock_status = f"🎯 Buy on Dip หลังงบ (ผ่านไป {days_since_earnings} วัน | 7D Return: {return_7d}%)"
+                    swing_reason = f"งบเพิ่งประกาศผ่านไป {days_since_earnings} วัน แต่โดนแรงเทขาย Sell on Fact กดราคาลงมา {return_7d}% อยู่ในโซนน่าช้อนซื้อสะสมลุ้นเด้งรีบาวด์!"
                 elif scan_mode == "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)":
                     stock_status = "🎯 Custom Target Found (หุ้นที่คุณเจาะจงค้นหา)"
                     swing_reason = f"ดึงข้อมูลวิเคราะห์เจาะลึกเฉพาะตัว [{ticker}] สำเร็จ ราคาปัจจุบัน ${latest_close:.2f} (RSI: {latest_rsi:.1f})"
@@ -367,7 +504,7 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg, 'Return_7D': return_7d,
                     'TF_Data': tf_data, 'TP1': tp1_price, 'TP2': tp2_price,
                     'POC_Price': round(poc_price, 2), 'Stop_Loss': stop_loss_price,
-                    'Resistance_Price': round(high_30, 2), 'Next_Earnings': next_earnings,
+                    'Resistance_Price': round(high_30, 2), 'Next_Earnings': next_earnings_str,
                     'Stock_Status': stock_status, 'Swing_Reason': swing_reason,
                     'Patent_Theme': patent_theme, 'Fundamental_Review': fundamental_review,
                     'News_Summary': news_summary
@@ -394,7 +531,7 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
                 col1.metric("💰 ราคาปิดปัจจุบัน", f"${current_close}")
                 col2.metric("🎯 ฐานราคา POC (แนวรับเจ้ามือ)", f"${item['POC_Price']}")
                 col3.metric("🛑 จุดตัดขาดทุน (Stop Loss)", f"${item['Stop_Loss']}", delta_color="inverse")
-                col4.metric("📅 ประกาศงบรอบหน้า", f"{item['Next_Earnings']}")
+                col4.metric("📅 ข้อมูลรอบงบการเงิน", f"{item['Next_Earnings']}")
                 st.markdown("---")
                 clean_t = ticker.replace('.BK', '')
                 yahoo_news_url = f"https://finance.yahoo.com/quote/{ticker}/news/"
@@ -437,4 +574,4 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
 
                 st.markdown("---")
     else:
-        st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับช่วง RSI หรือเปลี่ยนกลุ่ม Sector ดูกدใหม่นะเพื่อน!")
+        st.warning("⚠️ ไม่พบหุ้นที่ตรงตามเงื่อนไขใน Sector ที่มึงเลือก ลองปรับกลุ่ม Sector หรือเปลี่ยนโหมดดูใหม่นะเพื่อน!")
