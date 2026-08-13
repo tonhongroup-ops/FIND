@@ -232,13 +232,11 @@ scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการส
     "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)"
 ])
 
-# แยกย่อยตัวเลือก Sector ให้ชัดเจนตรงตามใจมึง
 selected_sectors = []
 if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม (เลือกได้มากกว่า 1 Sector)")
     
-    # ทำ checkbox ให้เลือกสแกนเฉพาะ sector ที่สนใจ
     use_sec1 = st.sidebar.checkbox("💻 Information Technology, AI & Semiconductors", value=True)
     use_sec2 = st.sidebar.checkbox("🤖 Smart Manufacturing & Robotics", value=False)
     use_sec3 = st.sidebar.checkbox("🧬 Biotech & Healthcare", value=False)
@@ -280,7 +278,7 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
     if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
         for sec in selected_sectors:
             target_tickers.extend(universe[sec])
-        target_tickers = list(set(target_tickers)) # ตัดตัวซ้ำกันออกถ้ามี
+        target_tickers = list(set(target_tickers))
     elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
         target_tickers = universe["🇹🇭 7. SET100 Top Thai Giants & Swing Movers (Thailand)"]
     elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทุบ (-)":
@@ -370,22 +368,17 @@ if st.button("🚀 เริ่มรันระบบสแกนตาม Sec
                 elif scan_mode == "🔎 4. ค้นหา Ticker อิสระรายตัว (NASDAQ / SET100 Custom Search)":
                     stock_status = "🎯 Custom Target Found (หุ้นที่คุณเจาะจงค้นหา)"
                     swing_reason = f"ดึงข้อมูลวิเคราะห์เจาะลึกเฉพาะตัว [{ticker}] สำเร็จ ราคาปัจจุบัน ${latest_close:.2f} (RSI: {latest_rsi:.1f})"
-                           is_matched = False
-            if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
-                if "1. เจ้ามือกำลังสะสม" in strategy_mode:
-                    if dist_to_poc_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = True
+                elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
+                    stock_status = "🔥 SET100 Volume Active (วอลุ่มคึกคัก เงินเข้าสะพัด)"
+                    swing_reason = f"หุ้นไทยตัวนี้มีความเคลื่อนไหวของ Volume ชัดเจน (Vol Change 3 วันอยู่ที่ {vol_change_3d_pct:+.1f}%)"
+                elif "1. เจ้ามือกำลังสะสม" in strategy_mode:
+                    stock_status = "🐋 เจ้ามือสะสมพลัง / อยู่ใกล้โซน POC สำคัญ"
+                    swing_reason = f"โครงสร้างราคาเคลื่อนไหวอยู่ใกล้ต้นทุนเฉลี่ยของตลาด (POC: ${poc_price:.2f}) พื้นฐานและสตอรี่สิทธิบัตรแกร่ง"
                 else:
-                    if dist_to_high_pct <= 5.0 and (rsi_min <= latest_rsi <= rsi_max):
-                        is_matched = True
-            elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
-                if vol_change_3d_pct >= 5.0:
-                    is_matched = True
-            elif scan_mode == "🎯 3. ดักเก็บของถูก: หุ้นจ่อประกาศงบ 7 วัน + ราคาโดนทុบ (-)":
-                if 0 <= days_left <= 7 and return_7d < 0:
-                    is_matched = True
-            else:
-                is_matched = True
+                    stock_status = "⚡ หุ้นจ่อแนวต้านสำคัญ / เตรียมเบรก"
+                    swing_reason = f"ราคาไต่ระดับเข้าใกล้แนวต้าน 30 วัน (${high_30:.2f}) ด้วยแรงส่งโมเมนตัมที่ดี"
+
+                matched_data.append({
                     'Ticker': ticker, 'Close': round(latest_close, 2), 'Vol_Change_3D': round(vol_change_3d_pct, 1),
                     'RSI_Latest': round(latest_rsi, 2), 'RSI_2M_Avg': rsi_2m_avg, 'Return_7D': return_7d,
                     'TF_Data': tf_data, 'TP1': tp1_price, 'TP2': tp2_price,
