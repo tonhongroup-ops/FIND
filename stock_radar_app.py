@@ -359,41 +359,33 @@ scan_mode = st.sidebar.radio("📌 เลือกรูปแบบการส
 selected_sectors = []
 if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)" or scan_mode == "🎯 3. ดักเก็บของถูก: งบเพิ่งออก 7 วัน + โดน Sell on Fact ย่อลง 5-20%":
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม (เลือกได้มากกว่า 1 Sector)")
+    st.sidebar.markdown("### 🧬 เลือกกลุ่มอุตสาหกรรม")
+    use_sec1 = st.sidebar.checkbox("💻 IT, AI & Semiconductors", value=True)
+    use_sec2 = st.sidebar.checkbox("🤖 Robotics", value=False)
+    use_sec3 = st.sidebar.checkbox("🧬 Biotech", value=False)
+    use_sec4 = st.sidebar.checkbox("🛡️ Consumer Staples", value=False)
+    use_sec5 = st.sidebar.checkbox("🌐 Fintech", value=False)
+    use_sec6 = st.sidebar.checkbox("🚀 Space/Defense", value=False)
+    use_sec7 = st.sidebar.checkbox("🇹🇭 SET100 Giants", value=False)
     
-    use_sec1 = st.sidebar.checkbox("💻 Information Technology, AI & Semiconductors", value=True)
-    use_sec2 = st.sidebar.checkbox("🤖 Smart Manufacturing & Robotics", value=False)
-    use_sec3 = st.sidebar.checkbox("🧬 Biotech & Healthcare", value=False)
-    use_sec4 = st.sidebar.checkbox("🛡️ Consumer Staples & High-Moat", value=False)
-    use_sec5 = st.sidebar.checkbox("🌐 Big Platforms & Fintech", value=False)
-    use_sec6 = st.sidebar.checkbox("🚀 Space Tech, Defense & Materials", value=False)
-    use_sec7 = st.sidebar.checkbox("🇹🇭 SET100 Top Thai Giants", value=False)
-    
-    sector_keys = list(universe.keys())
-    if use_sec1: selected_sectors.append(sector_keys[0])
-    if use_sec2: selected_sectors.append(sector_keys[1])
-    if use_sec3: selected_sectors.append(sector_keys[2])
-    if use_sec4: selected_sectors.append(sector_keys[3])
-    if use_sec5: selected_sectors.append(sector_keys[4])
-    if use_sec6: selected_sectors.append(sector_keys[5])
-    if use_sec7: selected_sectors.append(sector_keys[6])
-    
+    sec_map = [use_sec1, use_sec2, use_sec3, use_sec4, use_sec5, use_sec6, use_sec7]
+    all_keys = list(universe.keys())
+    for idx, active in enumerate(sec_map):
+        if active:
+            selected_sectors.append(all_keys[idx])
+
     if scan_mode == "📂 1. สแกนราย Sector ที่ต้องการ (เลือกกลุ่มเจาะจง)":
-        strategy_mode = st.sidebar.selectbox("🎯 เลือกกลยุทธ์การเล่นรอบ", [
-            "1. เจ้ามือกำลังสะสม (Accumulation) ใกล้ VAL / POC [ยืดหยุ่น]", 
-            "2. จ่อแนวต้านสำคัญหรือกำลังเบรกเอาท์ [ยืดหยุ่น]"
-        ])
-        rsi_min = st.sidebar.slider("📉 RSI ต่ำสุด", 25, 50, 35)
-        rsi_max = st.sidebar.slider("📈 RSI สูงสุด", 50, 90, 80)
+        strategy_mode = st.sidebar.selectbox("🎯 กลยุทธ์", ["1. เจ้ามือกำลังสะสม", "2. จ่อแนวต้าน/เบรกเอาท์"])
+        rsi_min, rsi_max = st.sidebar.slider("📉 RSI", 25, 90, (35, 80))
 
 elif scan_mode == "🔥 2. SET100 Volume Surge Scanner (สแกนหาหุ้นไทยที่วอลุ่มคึกคัก)":
-    st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะหุ้นในกลุ่ม SET100 แบบยืดหยุ่น")
+    st.sidebar.info("ระบบจะกวาดตรวจ Volume เฉพาะ SET100")
 
 else:
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🔎 ระบบค้นหา Ticker อิสระ (NASDAQ / SET100)")
-    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker ที่ต้องการ (เช่น NVDA, AAPL, PTT.BK, DELTA.BK)", "NVDA")
-    st.sidebar.info("💡 **ทริก:** หุ้นไทยให้ใส่ `.BK` ต่อท้าย หุ้นสหรัฐพิมพ์ชื่อย่อได้เลยเพื่อน!")
+    custom_ticker_input = st.sidebar.text_input("🔤 ใส่ Ticker (เช่น NVDA, PTT.BK)", "NVDA")
+
+
 
 st.markdown(f"## 🎯 เรดาร์สแกนหุ้นรอบสั้นตามงบการเงิน, ข่าวสารนวัตกรรม & วันประกาศงบรอบหน้า")
 
